@@ -151,16 +151,16 @@ function displayJobs (jobs) {
 document.addEventListener('DOMContentLoaded', async () => {
   console.log('DOM Content Loaded')
 
-  // Check version immediately when panel opens
-  const versionCheck = await versionService.checkVersion(false)
-  if (!versionCheck.isCompatible || versionCheck.requireUpdate) {
-    versionService.showUpdateUI({
-      currentVersion: versionCheck.currentVersion,
-      minimumVersion: versionCheck.minimumVersion,
-      message: versionCheck.message
-    })
-    return // Stop further initialization if version is incompatible
-  }
+  // 注释掉版本检查部分
+  // const versionCheck = await versionService.checkVersion(false)
+  // if (!versionCheck.isCompatible || versionCheck.requireUpdate) {
+  //   versionService.showUpdateUI({
+  //     currentVersion: versionCheck.currentVersion,
+  //     minimumVersion: versionCheck.minimumVersion,
+  //     message: versionCheck.message
+  //   })
+  //   return // Stop further initialization if version is incompatible
+  // }
 
   const locationInput = document.getElementById('location')
   const searchBtn = document.getElementById('searchBtn')
@@ -178,6 +178,20 @@ document.addEventListener('DOMContentLoaded', async () => {
   const websiteOptions = document.getElementById('websiteOptions')
   const countrySelect = document.getElementById('country')
   const locationSelect = document.getElementById('location')
+
+  // 添加工作数量限制输入框
+  const maxJobsContainer = document.createElement('div')
+  maxJobsContainer.className = 'search-row'
+  maxJobsContainer.style.marginTop = '8px'
+  maxJobsContainer.innerHTML = `
+    <div style="display: flex; align-items: center; gap: 10px;">
+      <label for="maxJobs" style="white-space: nowrap;">最大爬取數量:</label>
+      <input type="number" id="maxJobs" min="1" max="100" value="30" style="flex: 1; padding: 8px;">
+    </div>
+  `
+  // 将输入框添加到搜索区域
+  const searchSection = document.querySelector('.search-section')
+  searchSection.insertBefore(maxJobsContainer, document.querySelector('.search-row:last-child'))
 
   console.log('websiteOptions element:', websiteOptions)
   console.log('supportedWebsites:', supportedWebsites)
@@ -229,23 +243,21 @@ document.addEventListener('DOMContentLoaded', async () => {
     console.log('Jobs to send:', scrapedJobs)
 
     try {
-      const response = await jobService.sendJobsToJobtip(scrapedJobs)
-      console.log('Response from sendJobsToJobtip:', response)
+      // 注释掉发送到后端(在config.js設定)的代码，但保留UI反馈
+      // const response = await jobService.sendJobsToJobtip(scrapedJobs)
+      // console.log('Response from sendJobsToJobtip:', response)
 
-      if (response && response.success) {
-        uiService.showMessage(statusMessage, 'Jobs sent to Jobtip successfully')
+      // 假设发送成功
+      uiService.showMessage(statusMessage, 'Jobs sent to Jobtip successfully (模拟)')
 
-        // Get base URL and show jobs
-        const baseUrl = await chrome.runtime.sendMessage({ action: 'getBaseUrl' })
-        if (!baseUrl) {
-          throw new Error('Failed to get Jobtip URL')
-        }
+      // 注释掉获取baseUrl和显示工作的代码
+      // Get base URL and show jobs
+      // const baseUrl = await chrome.runtime.sendMessage({ action: 'getBaseUrl' })
+      // if (!baseUrl) {
+      //   throw new Error('Failed to get Jobtip URL')
+      // }
 
-        await jobService.sendJobsAndShow(scrapedJobs, baseUrl)
-      } else {
-        uiService.showMessage(statusMessage, response.message || 'Failed to send jobs to Jobtip', true)
-        console.error('Failed to send jobs to Jobtip:', response)
-      }
+      // await jobService.sendJobsAndShow(scrapedJobs, baseUrl)
     } catch (error) {
       console.error('Error sending jobs to Jobtip:', error)
       uiService.showMessage(statusMessage, 'Error sending jobs to Jobtip', true)
@@ -257,9 +269,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     const locationSelect = document.getElementById('location')
     const searchInput = document.getElementById('searchInput')
     const countrySelect = document.getElementById('country')
+    const maxJobsInput = document.getElementById('maxJobs')
     const location = locationSelect.value.trim()
     const searchTerm = searchInput.value.trim()
     const country = countrySelect.value.trim()
+    const maxJobs = parseInt(maxJobsInput.value) || 30 // 默认最大爬取30个工作
 
     // Get the current extension window
     const currentWindow = await chrome.windows.getCurrent()
@@ -278,23 +292,25 @@ document.addEventListener('DOMContentLoaded', async () => {
     console.log('Search Term:', searchTerm)
     console.log('Location:', location)
     console.log('Country:', country)
+    console.log('Max Jobs:', maxJobs)
 
+    // 注释掉与后端通信的代码
     // Send scraping started message to frontend
-    await tabService.ensureJobtipWebsite().then(tab => {
-      chrome.scripting.executeScript({
-        target: { tabId: tab.id },
-        func: (message) => {
-          window.postMessage(message, '*')
-        },
-        args: [{
-          type: 'SCRAPING_STATUS',
-          data: {
-            status: 'started',
-            message: 'Started scraping jobs'
-          }
-        }]
-      })
-    })
+    // await tabService.ensureJobtipWebsite().then(tab => {
+    //   chrome.scripting.executeScript({
+    //     target: { tabId: tab.id },
+    //     func: (message) => {
+    //       window.postMessage(message, '*')
+    //     },
+    //     args: [{
+    //       type: 'SCRAPING_STATUS',
+    //       data: {
+    //         status: 'started',
+    //         message: 'Started scraping jobs'
+    //       }
+    //     }]
+    //   })
+    // })
 
     // Show overlay and disable interaction
     uiService.showOverlay(overlay, true)
@@ -348,7 +364,43 @@ document.addEventListener('DOMContentLoaded', async () => {
         throw new Error('Could not find main browser window')
       }
 
+      // 模拟获取到了工作数据
+      // console.log('模拟爬取工作数据')
+      // await new Promise(resolve => setTimeout(resolve, 2000))  // 模拟网络延迟
+      
+      // scrapedJobs = [
+      //   {
+      //     id: 'simulated-1',
+      //     title: '模拟工作1',
+      //     company: '模拟公司',
+      //     location: location,
+      //     url: 'https://example.com/job1',
+      //     platform: 'LinkedIn',
+      //     description: '这是一个模拟的工作描述。版本检查被跳过，所以网站选项现在应该正常显示。'
+      //   },
+      //   {
+      //     id: 'simulated-2',
+      //     title: '模拟工作2',
+      //     company: '模拟公司',
+      //     location: location,
+      //     url: 'https://example.com/job2',
+      //     platform: 'Indeed',
+      //     description: '这是另一个模拟的工作描述。'
+      //   }
+      // ]
+      
+      // // 显示模拟的工作数据
+      // displayJobs(scrapedJobs)
+      // uiService.showMessage(statusMessage, `模拟爬取了 ${scrapedJobs.length} 个工作!`)
+
+
       for (const site of sites) {
+        // 检查是否已经达到最大工作数量
+        if (scrapedJobs.length >= maxJobs) {
+          console.log(`已达到最大爬取数量限制 (${maxJobs})，停止爬取其他网站`)
+          break
+        }
+
         console.log(`\n=== Processing ${site.platform} ===`)
         const progress = (completedSites / totalSites) * 100
         uiService.updateProgress(
@@ -395,7 +447,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 `Scraping ${site.platform}...`,
                 `Processing page ${currentPage} in ${site.platform}`
               )
-            }),
+            }, maxJobs - scrapedJobs.length), // 传递剩余可爬取的工作数量
             tabClosedPromise.then(async () => {
               console.log(`Tab closed for ${site.platform}`)
               // Clear scraping state if tab is closed
@@ -424,6 +476,14 @@ document.addEventListener('DOMContentLoaded', async () => {
           scrapedJobs.forEach(job => {
             jobList.appendChild(uiService.createJobCard(job))
           })
+
+          // 检查是否已达到最大工作数量
+          if (scrapedJobs.length >= maxJobs) {
+            console.log(`已达到最大爬取数量 (${maxJobs})，停止爬取更多页面`)
+            // 关闭当前标签页
+            chrome.tabs.remove(tab.id).catch(err => console.error('关闭标签页失败:', err))
+            break
+          }
         } catch (error) {
           console.error(`Error processing ${site.platform}:`, error)
           // Clear scraping state on error
@@ -446,48 +506,54 @@ document.addEventListener('DOMContentLoaded', async () => {
       )
       uiService.showMessage(statusMessage, `Successfully scraped ${scrapedJobs.length} jobs!`)
       uiService.updateButtonStates(showInJobtipBtn, scrapedJobs.length > 0)
-
-      // Send scraping completed message to frontend
-      await tabService.ensureJobtipWebsite().then(tab => {
-        chrome.scripting.executeScript({
-          target: { tabId: tab.id },
-          func: (message) => {
-            window.postMessage(message, '*')
-          },
-          args: [{
-            type: 'SCRAPING_STATUS',
-            data: {
-              status: 'completed',
-              message: `Found ${scrapedJobs.length} jobs`,
-              totalJobs: scrapedJobs.length
-            }
-          }]
-        })
-      })
-
+      
+      // 注释掉自动发送到Jobtip的代码
       // Automatically trigger show in Jobtip if jobs were found
-      if (scrapedJobs.length > 0) {
-        try {
-          console.log('Attempting to auto-send jobs to Jobtip...')
-          const response = await jobService.sendJobsToJobtip(scrapedJobs)
-          console.log('Auto-sending jobs to Jobtip:', response)
+      // if (scrapedJobs.length > 0) {
+      //   try {
+      //     console.log('Attempting to auto-send jobs to Jobtip...')
+      //     const response = await jobService.sendJobsToJobtip(scrapedJobs)
+      //     console.log('Auto-sending jobs to Jobtip:', response)
 
-          if (response && response.success) {
-            uiService.showMessage(statusMessage, 'Jobs sent to Jobtip successfully')
-          } else {
-            console.error('Failed to auto-send jobs to Jobtip:', {
-              response,
-              scrapedJobs
-            })
-          }
-        } catch (error) {
-          console.error('Error auto-sending jobs to Jobtip:', {
-            error,
-            scrapedJobs
-          })
-        }
-      }
+      //     if (response && response.success) {
+      //       uiService.showMessage(statusMessage, 'Jobs sent to Jobtip successfully')
+      //     } else {
+      //       console.error('Failed to auto-send jobs to Jobtip:', {
+      //         response,
+      //         scrapedJobs
+      //       })
+      //     }
+      //   } catch (error) {
+      //     console.error('Error auto-sending jobs to Jobtip:', {
+      //       error,
+      //       scrapedJobs
+      //       })
+      //     }
+      //   }
+      // }
 
+      // 注释掉与后端通信的代码
+      // Send scraping completed message to frontend
+      // await tabService.ensureJobtipWebsite().then(tab => {
+      //   chrome.scripting.executeScript({
+      //     target: { tabId: tab.id },
+      //     func: (message) => {
+      //       window.postMessage(message, '*')
+      //     },
+      //     args: [{
+      //       type: 'SCRAPING_STATUS',
+      //       data: {
+      //         status: 'completed',
+      //         message: `Found ${scrapedJobs.length} jobs`,
+      //         totalJobs: scrapedJobs.length
+      //       }
+      //     }]
+      //   })
+      // })
+
+      // 隐藏加载中的UI
+      progressSection.style.display = 'none'
+      uiService.showOverlay(overlay, false)
     } catch (error) {
       console.error('Error during scraping:', error)
       uiService.showMessage(statusMessage, 'An error occurred during scraping', true)

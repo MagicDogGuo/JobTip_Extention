@@ -56,7 +56,7 @@ function removeDuplicateJobs (jobs) {
 }
 
 // Function to handle pagination for any platform
-async function scrapeWithPagination (tab, platform, progressCallback) {
+async function scrapeWithPagination (tab, platform, progressCallback, maxJobs = Infinity) {
   let allJobs = []
   let pageNum = 1
 
@@ -72,6 +72,12 @@ async function scrapeWithPagination (tab, platform, progressCallback) {
 
     while (currentUrl) {
       console.log(`${platform} - Processing page ${pageNum}, URL:`, currentUrl)
+
+      // 检查是否达到最大工作数量限制
+      if (allJobs.length >= maxJobs) {
+        console.log(`${platform} - 已达到最大爬取数量 (${maxJobs})，停止爬取更多页面`)
+        break
+      }
 
       // Check if tab still exists
       try {
@@ -114,7 +120,19 @@ async function scrapeWithPagination (tab, platform, progressCallback) {
       console.log(`${platform} jobs found:`, response.data.length)
       console.log(`${platform} next URL:`, response.nextUrl)
 
-      allJobs.push(...response.data)
+      // 计算当前可以添加的工作数量，不超过最大限制
+      const remainingJobsCount = maxJobs - allJobs.length
+      const jobsToAdd = response.data.slice(0, remainingJobsCount)
+      
+      allJobs.push(...jobsToAdd)
+      console.log(`${platform} - 当前已爬取 ${allJobs.length}/${maxJobs} 个工作`)
+      
+      // 如果达到最大数量，则退出循环
+      if (allJobs.length >= maxJobs) {
+        console.log(`${platform} - 已达到最大爬取数量，停止爬取更多页面`)
+        break
+      }
+
       currentUrl = response.nextUrl
       pageNum++
 

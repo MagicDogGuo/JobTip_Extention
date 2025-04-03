@@ -6,7 +6,7 @@ const config = {
   },
   // Production environment ，擴展程序中的各種功能（如發送工作數據、檢查版本更新等）會基於這個URL構建完整的API請求地址
   production: {
-    baseUrl: 'https://jobjourney.me'
+    baseUrl: 'https://google.me' //////////////////////
   }
 }
 

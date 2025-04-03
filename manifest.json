@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "JobTip Extention",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Help you search and track job applications across multiple platforms",
   "permissions": [
     "tabs",
@@ -20,7 +20,7 @@
     "*://*.reed.co.uk/*",
     "*://*.workopolis.com/*",
     "http://localhost:5001/*",
-    "https://*.jobtip.me/*"
+    "https://*.JobJourney.me/*"
   ],
   "action": {
     "default_icon": {
@@ -47,7 +47,7 @@
         "https://*.reed.co.uk/*",
         "https://*.workopolis.com/*",
         "http://localhost:5001/*",
-        "https://*.jobjourney.me/*"/////////////
+        "https://*.jobjourney.me/*"
       ],
       "js": [
         "helpers/jobScrapers.js",
