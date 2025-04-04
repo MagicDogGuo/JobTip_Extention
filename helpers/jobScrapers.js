@@ -73,54 +73,181 @@ const scrapers = {
     isMatch: (url) => url.includes('linkedin.com'),
     scrapeJobList: async () => {
       let jobs = []
-      console.log('=== LinkedIn Scraping Started ===')
-      console.log('Current URL:', window.location.href)
+      const logMessages = []
+      
+      const log = (message) => {
+        console.log(message)
+        logMessages.push(message)
+      }
 
-      // Updated selectors for the rendered page
-      const jobNodes = document.querySelectorAll('div.job-card-container')
-      console.log('Found LinkedIn job nodes:', jobNodes.length)
+      log('=== LinkedIn Scraping Started ===')
+      log(`Current URL: ${window.location.href}`)
+      log(`Document readyState: ${document.readyState}`)
+      log(`Page content length: ${document.body.innerHTML.length}`)
+      log(`Page title: ${document.title}`)
 
-      jobNodes.forEach(node => {
+      // Wait for page to be fully loaded
+      if (document.readyState !== 'complete') {
+        log('Waiting for page to load...')
+        await new Promise(resolve => {
+          window.addEventListener('load', resolve, { once: true })
+        })
+        log('Page loaded')
+      }
+
+      // Check if we're on the login page
+      const loginForm = document.querySelector('form.login-form')
+      if (loginForm) {
+        log('Detected login page. Please log in first.')
+        return { jobs, nextUrl: null, error: 'Login required' }
+      }
+
+      // Try multiple selectors to find job nodes
+      const selectors = [
+        'div[data-job-id]',
+        'div[data-view-name="job-card"]',
+        'div[class*="job-card"]',
+        'div.jobs-search-results__list-item',
+        'div.job-card-container',
+        'div.job-card-job-posting-card-wrapper'
+      ]
+
+      let jobNodes = []
+      for (const selector of selectors) {
+        const nodes = document.querySelectorAll(selector)
+        if (nodes.length > 0) {
+          jobNodes = nodes
+          log(`Using selector: ${selector}`)
+          log(`Found ${nodes.length} job nodes with this selector`)
+          break
+        }
+      }
+
+      if (jobNodes.length === 0) {
+        log('No job nodes found with any selector')
+        return { jobs, nextUrl: null, error: 'No job nodes found' }
+      }
+
+      jobNodes.forEach((node, index) => {
         try {
-          console.log(`\nProcessing LinkedIn job:`)
+          log(`\nProcessing LinkedIn job ${index + 1}:`)
+          log(`Node HTML: ${node.outerHTML.substring(0, 200)}...`)
 
-          // Updated selectors based on the actual page structure
-          const titleNode = node.querySelector('.job-card-list__title--link')
-          const companyNode = node.querySelector('.artdeco-entity-lockup__subtitle span')
-          const locationNode = node.querySelector('.artdeco-entity-lockup__caption span[dir="ltr"]')
-          const jobUrlNode = node.querySelector('.job-card-list__title--link')
-          const logoNode = node.querySelector('.ivm-image-view-model img')
+          // Try multiple selectors for each field
+          const titleNode = node.querySelector([
+            'a[class*="job-card-list__title"]',
+            'a[class*="job-card-container__link"]',
+            'a[class*="job-card-job-posting-card"]',
+            'a[class*="job-card-list__entity"]',
+            'a[class*="job-card-container"]',
+            'a[class*="job-posting-card"]',
+            'a[class*="zwsPhDvTGeELvNkMMaTI"]'
+          ].join(','))
+
+          const companyNode = node.querySelector([
+            'span[class*="company-name"]',
+            'span[class*="subtitle"]',
+            'span[class*="entity-lockup__subtitle"]',
+            'span[class*="job-card-container__company-name"]',
+            'span[class*="job-card-list__company-name"]',
+            'div[class*="job-card-container__company-name"]',
+            'div[class*="job-card-list__company-name"]',
+            'div[class*="entity-lockup__subtitle"]'
+          ].join(','))
+
+          const locationNode = node.querySelector([
+            'span[class*="location"]',
+            'span[class*="metadata"]',
+            'span[class*="job-card-container__metadata"]',
+            'span[class*="job-card-list__metadata"]',
+            'span[class*="entity-lockup__caption"]',
+            'div[class*="job-card-container__metadata"]',
+            'div[class*="job-card-list__metadata"]',
+            'div[class*="entity-lockup__caption"]'
+          ].join(','))
+
+          const jobUrlNode = node.querySelector([
+            'a[class*="job-card-list__title"]',
+            'a[class*="job-card-container__link"]',
+            'a[class*="job-card-job-posting-card"]',
+            'a[class*="job-card-list__entity"]',
+            'a[class*="job-card-container"]',
+            'a[class*="job-posting-card"]',
+            'a[class*="zwsPhDvTGeELvNkMMaTI"]'
+          ].join(','))
+
+          const logoNode = node.querySelector([
+            'img[class*="logo"]',
+            'img[class*="image"]',
+            'img[class*="company-logo"]',
+            'img[class*="entity-lockup__image"]',
+            'img[class*="job-card-list__logo"]',
+            'img[class*="job-card-container__logo"]'
+          ].join(','))
+
+          log(`Title node found: ${!!titleNode}`)
+          log(`Company node found: ${!!companyNode}`)
+          log(`Location node found: ${!!locationNode}`)
+          log(`Job URL node found: ${!!jobUrlNode}`)
+          log(`Logo node found: ${!!logoNode}`)
 
           // Get metadata items for salary and job type
-          const metadataItems = Array.from(node.querySelectorAll('.artdeco-entity-lockup__metadata li span[dir="ltr"]'))
+          const metadataItems = Array.from(node.querySelectorAll([
+            'span[class*="metadata"]',
+            'li[class*="metadata"]',
+            'span[class*="job-card-container__metadata"]',
+            'span[class*="job-card-list__metadata"]',
+            'span[class*="entity-lockup__metadata"]',
+            'div[class*="job-card-container__metadata"]',
+            'div[class*="job-card-list__metadata"]',
+            'div[class*="entity-lockup__metadata"]'
+          ].join(',')))
             .map(el => el.textContent.trim())
             .filter(text => text)
+          log(`Found ${metadataItems.length} metadata items`)
 
           // Find salary (item containing currency symbols or ranges)
           const salaryText = metadataItems.find(text =>
             /[$€£¥]|per\s+|annum|annual|year|month|hour|week/i.test(text)
           )
+          log(`Salary found: ${!!salaryText}`)
 
           // Get job description from the job details section
-          const descriptionNode = node.querySelector('.job-card-container__description, .job-card-list__description')
+          const descriptionNode = node.querySelector([
+            'div[class*="description"]',
+            'div[class*="snippet"]',
+            'div[class*="job-card-container__description"]',
+            'div[class*="job-card-list__description"]',
+            'div[class*="job-card-container__snippet"]',
+            'div[class*="job-card-list__snippet"]'
+          ].join(','))
           const description = descriptionNode?.textContent?.trim()
             .replace(/\s+/g, ' ')  // Normalize whitespace
             .trim()
+          log(`Description found: ${!!description}`)
 
           // Get posted date
-          const postedDateNode = node.querySelector('time, .job-card-container__listed-time, span.job-card-container__footer-item--time')
+          const postedDateNode = node.querySelector([
+            'span[class*="time"]',
+            'span[class*="listed"]',
+            'span[class*="job-card-container__footer-item--time"]',
+            'span[class*="job-card-list__footer-item--time"]',
+            'time',
+            'div[class*="job-card-container__footer-item--time"]',
+            'div[class*="job-card-list__footer-item--time"]'
+          ].join(','))
+          log(`Posted date found: ${!!postedDateNode}`)
 
-          console.log('Found LinkedIn nodes:', {
-            title: titleNode?.textContent?.trim(),
-            company: companyNode?.textContent?.trim(),
-            location: locationNode?.textContent?.trim(),
-            salary: salaryText,
-            description: description,
-            postedDate: postedDateNode?.textContent?.trim(),
-            url: jobUrlNode?.href,
-            logo: logoNode?.src,
-            allMetadata: metadataItems
-          })
+          log('Found LinkedIn nodes:')
+          log(`Title: ${titleNode?.textContent?.trim()}`)
+          log(`Company: ${companyNode?.textContent?.trim()}`)
+          log(`Location: ${locationNode?.textContent?.trim()}`)
+          log(`Salary: ${salaryText}`)
+          log(`Description: ${description?.substring(0, 100)}...`)
+          log(`Posted Date: ${postedDateNode?.textContent?.trim()}`)
+          log(`URL: ${jobUrlNode?.href}`)
+          log(`Logo: ${logoNode?.src}`)
+          log(`All Metadata: ${JSON.stringify(metadataItems)}`)
 
           if (titleNode && companyNode) {
             // Clean up the title by taking only the first line
@@ -137,42 +264,30 @@ const scrapers = {
               jobUrl: jobUrlNode?.href || window.location.href,
               companyLogoUrl: logoNode?.src
             })
-            console.log('Successfully scraped LinkedIn job:', job)
+            log('Successfully scraped LinkedIn job')
             jobs.push(job)
           } else {
-            console.log('Skipping job due to missing required fields')
+            log('Skipping job due to missing required fields')
           }
         } catch (error) {
-          console.error('Error scraping LinkedIn job:', error)
+          log(`Error scraping LinkedIn job: ${error.message}`)
+          log(`Error stack: ${error.stack}`)
         }
       })
 
-      // Check for next page with specific LinkedIn next button selector
-      const nextButton = document.querySelector([
-        'button.jobs-search-pagination__button--next',
-        'button.artdeco-button--icon-right[aria-label="View next page"]',
-        'button.artdeco-button[data-test-pagination-page-btn]'
-      ].join(','))
+      // Save logs to a file
+      const blob = new Blob([logMessages.join('\n')], { type: 'text/plain' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = 'linkedin_scraper_logs.txt'
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
 
-      let nextUrl = null
-      if (nextButton && !nextButton.disabled && nextButton.getAttribute('aria-disabled') !== 'true') {
-        // Get current page number from URL or default to 1
-        const currentUrl = new URL(window.location.href)
-        const currentStart = parseInt(currentUrl.searchParams.get('start') || '0')
-        const pageSize = 25 // LinkedIn's default page size
-
-        // Create next page URL
-        currentUrl.searchParams.set('start', (currentStart + pageSize).toString())
-        nextUrl = currentUrl.toString()
-      }
-
-      console.log(`=== LinkedIn Scraping Complete: ${jobs.length} jobs found ===`)
-      console.log('Next URL:', nextUrl)
-
-      return {
-        jobs,
-        nextUrl
-      }
+      log(`=== LinkedIn Scraping Complete: ${jobs.length} jobs found ===`)
+      return { jobs, nextUrl: null }
     },
     scrapeJobDetail: () => {
       try {
