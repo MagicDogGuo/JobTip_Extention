@@ -128,6 +128,20 @@ const scrapers = {
         return { jobs, nextUrl: null, error: 'No job nodes found' }
       }
 
+      // Find next page URL
+      let nextUrl = null
+      const nextButton = document.querySelector('.jobs-search-pagination__button--next')
+      if (nextButton) {
+        const currentUrl = new URL(window.location.href)
+        const currentPage = parseInt(currentUrl.searchParams.get('start') || '0')
+        const nextPage = currentPage + 25 // LinkedIn每页显示25个职位
+        currentUrl.searchParams.set('start', nextPage.toString())
+        nextUrl = currentUrl.toString()
+        log(`Found next page URL: ${nextUrl}`)
+      } else {
+        log('No next page button found')
+      }
+
       jobNodes.forEach((node, index) => {
         try {
           log(`\nProcessing LinkedIn job ${index + 1}:`)
@@ -287,7 +301,7 @@ const scrapers = {
       URL.revokeObjectURL(url)
 
       log(`=== LinkedIn Scraping Complete: ${jobs.length} jobs found ===`)
-      return { jobs, nextUrl: null }
+      return { jobs, nextUrl }
     },
     scrapeJobDetail: () => {
       try {
