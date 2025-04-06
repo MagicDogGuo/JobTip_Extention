@@ -1,0 +1,18 @@
+.export-json-btn {
+  background-color: #0a66c2;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  padding: 8px 16px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: background-color 0.2s;
+}
+
+.export-json-btn:hover {
+  background-color: #004182;
+}
+
+.export-json-btn:active {
+  background-color: #003b7a;
+} 

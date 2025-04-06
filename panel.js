@@ -239,28 +239,38 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Update show in Jobtip button handler
   showInJobtipBtn.addEventListener('click', async () => {
-    console.log('Show in Jobtip button clicked')
-    console.log('Jobs to send:', scrapedJobs)
+    console.log('Export JSON button clicked')
+    console.log('Jobs to export:', scrapedJobs)
 
     try {
-      // 注释掉发送到后端(在config.js設定)的代码，但保留UI反馈
-      // const response = await jobService.sendJobsToJobtip(scrapedJobs)
-      // console.log('Response from sendJobsToJobtip:', response)
+      if (scrapedJobs.length === 0) {
+        uiService.showMessage(statusMessage, '沒有可導出的工作結果', true)
+        return
+      }
 
-      // 假设发送成功
-      uiService.showMessage(statusMessage, 'Jobs sent to Jobtip successfully (模拟)')
-
-      // 注释掉获取baseUrl和显示工作的代码
-      // Get base URL and show jobs
-      // const baseUrl = await chrome.runtime.sendMessage({ action: 'getBaseUrl' })
-      // if (!baseUrl) {
-      //   throw new Error('Failed to get Jobtip URL')
-      // }
-
-      // await jobService.sendJobsAndShow(scrapedJobs, baseUrl)
+      // 生成並下載JSON文件
+      const jsonData = {
+        totalJobs: scrapedJobs.length,
+        timestamp: new Date().toISOString(),
+        jobs: scrapedJobs
+      }
+      
+      const jsonString = JSON.stringify(jsonData, null, 2)
+      const blob = new Blob([jsonString], { type: 'application/json' })
+      const url = URL.createObjectURL(blob)
+      
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `jobtip_results_${new Date().toISOString().split('T')[0]}.json`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+      
+      uiService.showMessage(statusMessage, '工作結果導出成功')
     } catch (error) {
-      console.error('Error sending jobs to Jobtip:', error)
-      uiService.showMessage(statusMessage, 'Error sending jobs to Jobtip', true)
+      console.error('Error exporting job results:', error)
+      uiService.showMessage(statusMessage, '導出結果時發生錯誤', true)
     }
   })
 
