@@ -186,7 +186,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   maxJobsContainer.innerHTML = `
     <div style="display: flex; align-items: center; gap: 10px;">
       <label for="maxJobs" style="white-space: nowrap;">最大爬取數量:</label>
-      <input type="number" id="maxJobs" min="1" max="100" value="30" style="flex: 1; padding: 8px;">
+      <input type="number" id="maxJobs" min="1" max="100" value="3" style="flex: 1; padding: 8px;">
     </div>
   `
   // 将输入框添加到搜索区域
