@@ -148,6 +148,78 @@ function displayJobs (jobs) {
   })
 }
 
+// API 端点定义
+const API_ENDPOINT = 'http://localhost:3000/api/jobs'
+const API_GET_JOBS = 'http://localhost:3000/api/jobs'
+
+// 全局变量
+let scrapedJobs = []
+
+// API 测试功能
+const apiTester = {
+  testGetJobs: async () => {
+    console.log('Testing GET jobs API')
+    try {
+      const statusMessage = document.getElementById('statusMessage')
+      const response = await fetch(API_GET_JOBS, {
+        method: 'GET',
+        headers: {
+          'Accept': 'application/json'
+        }
+      })
+      
+      if (response.ok) {
+        const data = await response.json()
+        console.log('GET response:', data)
+        uiService.showMessage(statusMessage, `成功获取 ${data.length} 个工作数据`, 'success')
+      } else {
+        const errorData = await response.json()
+        uiService.showMessage(statusMessage, `获取失败: ${errorData.message || '未知错误'}`, 'error')
+      }
+    } catch (error) {
+      console.error('API test error:', error)
+      const statusMessage = document.getElementById('statusMessage')
+      uiService.showMessage(statusMessage, `获取失败: ${error.message}`, 'error')
+    }
+  }
+}
+
+// API 导出功能
+const apiExporter = {
+  exportJobs: async () => {
+    console.log('Exporting jobs by API')
+    try {
+      const statusMessage = document.getElementById('statusMessage')
+      console.log('Exporting jobs:', scrapedJobs)
+      if (scrapedJobs.length > 0) {
+        // 调用后端 API
+        const apiResponse = await fetch(API_ENDPOINT, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+          },
+          body: JSON.stringify(scrapedJobs)
+        })
+        
+        if (apiResponse.ok) {
+          const data = await apiResponse.json()
+          uiService.showMessage(statusMessage, `成功导出 ${data.length} 个工作到后端`, 'success')
+        } else {
+          const errorData = await apiResponse.json()
+          uiService.showMessage(statusMessage, `导出失败: ${errorData.message || '未知错误'}`, 'error')
+        }
+      } else {
+        uiService.showMessage(statusMessage, '没有找到可导出的工作', 'error')
+      }
+    } catch (error) {
+      console.error('API export error:', error)
+      const statusMessage = document.getElementById('statusMessage')
+      uiService.showMessage(statusMessage, `导出失败: ${error.message}`, 'error')
+    }
+  }
+}
+
 document.addEventListener('DOMContentLoaded', async () => {
   console.log('DOM Content Loaded')
 
@@ -178,6 +250,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   const websiteOptions = document.getElementById('websiteOptions')
   const countrySelect = document.getElementById('country')
   const locationSelect = document.getElementById('location')
+  const exportByApiBtn = document.getElementById('exportByApiBtn')
+  const testGetBtn = document.getElementById('testGetBtn')
 
   // 添加工作数量限制输入框
   const maxJobsContainer = document.createElement('div')
@@ -196,7 +270,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   console.log('websiteOptions element:', websiteOptions)
   console.log('supportedWebsites:', supportedWebsites)
 
-  let scrapedJobs = []
+  // let scrapedJobs = []///////////////////////////////////////////////
 
   // Add country change handler
   countrySelect.addEventListener('change', (e) => {
@@ -596,6 +670,15 @@ document.addEventListener('DOMContentLoaded', async () => {
       chrome.windows.update(currentWindow.id, { focused: true })
     }
   })
+
+  // 添加 API 相关按钮的事件监听器
+  if (exportByApiBtn) {
+    exportByApiBtn.addEventListener('click', apiExporter.exportJobs)
+  }
+
+  if (testGetBtn) {
+    testGetBtn.addEventListener('click', apiTester.testGetJobs)
+  }
 })
 
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {

@@ -574,6 +574,19 @@
       content: '📡';
       font-size: 14px;
     }
+
+    .test-get-btn {
+      background-color: var(--primary);
+    }
+
+    .test-get-btn:hover {
+      background-color: var(--primary-dark);
+    }
+
+    .test-get-btn::before {
+      content: '🔍';
+      font-size: 14px;
+    }
   </style>
 </head>
 
@@ -701,11 +714,12 @@
     <div class="job-actions">
       <button id="showInJobtipBtn" class="show-in-jobtip-btn" style="width: 100%;" disabled>Export Job Results</button>
       <button id="exportByApiBtn" class="export-by-api-btn" style="width: 100%;" disabled>Export Job Results By API</button>
+      <button id="testGetBtn" class="test-get-btn" style="width: 100%;">Test GET Jobs API</button>
     </div>
   </div>
 
   <script src="./panel.js" type="module"></script>
-  <script src="./sidepanel.js" type="module"></script>
+  <!-- <script src="./sidepanel.js" type="module"></script> -->
 
 </body>
 

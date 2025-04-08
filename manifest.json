@@ -10,7 +10,9 @@
     "system.display",
     "activeTab",
     "notifications",
-    "sidePanel"
+    "sidePanel",
+    "http://localhost:3000/"
+
   ],
   "host_permissions": [
     "*://*.linkedin.com/*",
@@ -20,7 +22,8 @@
     "*://*.reed.co.uk/*",
     "*://*.workopolis.com/*",
     "http://localhost:5001/*",
-    "https://*.JobJourney.me/*"
+    "https://*.JobJourney.me/*",
+    "http://localhost:3000/*"
   ],
   "action": {
     "default_icon": {
