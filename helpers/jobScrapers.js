@@ -454,8 +454,28 @@ const scrapers = {
   indeed: {
     isMatch: (url) => url.includes('indeed.com'),
     scrapeJobList: async () => {
-      console.group('Indeed - Job Scraping')
-      const jobs = []
+      let jobs = []
+      const logMessages = []
+      
+      const log = (message) => {
+        console.log(message)
+        logMessages.push(message)
+      }
+
+      log('=== Indeed Scraping Started ===')
+      log(`Current URL: ${window.location.href}`)
+      log(`Document readyState: ${document.readyState}`)
+      log(`Page content length: ${document.body.innerHTML.length}`)
+      log(`Page title: ${document.title}`)
+
+      // Wait for page to be fully loaded
+      if (document.readyState !== 'complete') {
+        log('Waiting for page to load...')
+        await new Promise(resolve => {
+          window.addEventListener('load', resolve, { once: true })
+        })
+        log('Page loaded')
+      }
 
       const jobNodes = document.querySelectorAll([
         'div.job_seen_beacon',
@@ -466,12 +486,15 @@ const scrapers = {
         'td.resultContent'
       ].join(','))
 
-      console.log('Found Indeed job nodes:', jobNodes.length)
+      log(`Found ${jobNodes.length} job nodes on the page`)
+
+      // 使用 Set 来跟踪已处理的职位
+      const seenJobIds = new Set()
 
       // Scrape current page
       jobNodes.forEach((node, index) => {
         try {
-          console.log(`\nProcessing Indeed job ${index + 1}:`)
+          log(`\nProcessing job ${index + 1}/${jobNodes.length}:`)
 
           const titleNode = node.querySelector([
             'h2.jobTitle a',
@@ -499,74 +522,36 @@ const scrapers = {
             'div[class*="workplace"]'
           ].join(','))
 
-          const descriptionNode = node.querySelector([
-            'div[data-testid="jobsnippet_footer"] ul li',
-            '.job-snippet',
-            '.underShelfFooter .heading6 ul li'
-          ].join(','))
-
-          const postedDateNode = node.querySelector('span.date')
-
-          // Get all metadata items and clean up text content
-          const metadataItems = Array.from(node.querySelectorAll([
-            '.metadataContainer li .metadata div[data-testid="attribute_snippet_testid"]',
-            '.metadataContainer li div[data-testid="attribute_snippet_testid"]',
-            '.metadataContainer li div[data-testid^="attribute_snippet"]'
-          ].join(',')))
-            .map(el => {
-              const textContent = Array.from(el.childNodes)
-                .filter(node => node.nodeType === Node.TEXT_NODE)
-                .map(node => node.textContent.trim())
-                .join(' ')
-                .split('+')[0]
-                .trim()
-
-              return textContent || el.textContent.trim().split('+')[0].trim()
-            })
-            .filter(text => text)
-
-          const salaryText = metadataItems.find(text => text.includes('$'))
-          const jobTypeText = metadataItems.find(text =>
-            /\b(Full-time|Part-time|Contract|Temporary|Internship|Casual|Contractor)\b/i.test(text)
-          )
-          const jobType = jobTypeText?.match(/\b(Full-time|Part-time|Contract|Temporary|Internship|Casual|Contractor)\b/i)?.[0] || ''
-
-          const description = descriptionNode?.textContent?.trim()
-            .replace(/…$/, '')
-            .replace(/\s+/g, ' ')
-            .trim()
+          log(`Title found: ${!!titleNode}`)
+          log(`Company found: ${!!companyNode}`)
+          log(`Location found: ${!!locationNode}`)
 
           if (titleNode && companyNode) {
-            let jobUrl = ''
-            if (titleNode.href) {
-              jobUrl = titleNode.href
-            } else if (titleNode.closest('a')?.href) {
-              jobUrl = titleNode.closest('a').href
-            } else if (node.querySelector('a[data-jk]')?.href) {
-              jobUrl = node.querySelector('a[data-jk]').href
+            // 创建职位唯一标识
+            const jobId = `${titleNode.textContent.trim()}-${companyNode.textContent.trim()}`
+            
+            // 检查是否已经处理过这个职位
+            if (seenJobIds.has(jobId)) {
+              log('Skipping duplicate job')
+              return
             }
-
-            if (!jobUrl.startsWith('http')) {
-              jobUrl = 'https://indeed.com' + jobUrl
-            }
-
-            const job = Job.createFromIndeed({
+            
+            seenJobIds.add(jobId)
+            
+            const job = {
               title: titleNode.textContent.trim(),
               company: companyNode.textContent.trim(),
-              location: locationNode?.textContent?.trim(),
-              jobUrl: jobUrl,
-              description: description,
-              salary: salaryText || '',
-              postedDate: postedDateNode?.textContent?.trim(),
-              companyLogoUrl: node.querySelector('img.companyAvatar')?.src || null,
-              jobType: jobType
-            })
-
-            console.log('Successfully scraped Indeed job:', job)
+              location: locationNode?.textContent?.trim() || '',
+              jobUrl: titleNode.href || window.location.href,
+              platform: 'Indeed'
+            }
+            log(`Successfully scraped job: ${job.title} at ${job.company}`)
             jobs.push(job)
+          } else {
+            log('Skipping job due to missing required fields')
           }
         } catch (error) {
-          console.error('Error scraping Indeed job:', error)
+          log(`Error processing job ${index + 1}: ${error.message}`)
         }
       })
 
@@ -574,14 +559,22 @@ const scrapers = {
       const nextPageLink = document.querySelector('a[data-testid="pagination-page-next"]')
       const nextUrl = nextPageLink ? nextPageLink.href : null
 
-      console.log(`Scraped ${jobs.length} jobs from current page`)
-      console.log('Next page URL:', nextUrl)
-      console.groupEnd()
+      log(`Scraped ${jobs.length} jobs from current page`)
+      log(`Next page URL: ${nextUrl || 'No next page available'}`)
 
-      return {
-        jobs,
-        nextUrl
-      }
+      // Save logs to a file
+      const blob = new Blob([logMessages.join('\n')], { type: 'text/plain' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = 'indeed_scraper_logs.txt'
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+
+      log(`=== Indeed Scraping Complete: ${jobs.length} jobs found ===`)
+      return { jobs, nextUrl }
     },
     scrapeJobDetail: () => {
       try {
@@ -617,3 +610,39 @@ const scrapers = {
 // Export the objects to make them available in content.js
 window.Job = Job
 window.scrapers = scrapers 
+
+// 添加日誌收集功能
+let indeedLogs = [];
+
+// 修改 log 函數
+function log(message) {
+  console.log(message);
+  indeedLogs.push(message);
+}
+
+// 修改 Indeed 爬蟲函數
+async function scrapeIndeedJobs() {
+  indeedLogs = []; // 清空日誌
+  log('=== Indeed Scraping Started ===');
+  
+  try {
+    // ... existing scraping code ...
+
+    // 在爬蟲結束時保存日誌
+    const blob = new Blob([indeedLogs.join('\n')], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'indeed_scraper_logs.txt';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+
+    log('=== Indeed Scraping Complete ===');
+    return jobs;
+  } catch (error) {
+    log(`Error during Indeed scraping: ${error.message}`);
+    throw error;
+  }
+} 
