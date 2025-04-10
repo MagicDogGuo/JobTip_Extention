@@ -3,66 +3,91 @@ class Job {
     title,
     company,
     location,
-    jobUrl,
     description = '',
+    requirements = [],
     salary = '',
-    postedDate = '',
-    companyLogoUrl = null,
+    jobType = '',
+    status = '未申請',
+    source = '',
+    sourceId = '',
+    sourceUrl = '',
+    appliedDate = null,
+    deadline = null,
+    notes = '',
     platform,
-    jobType = ''
+    createdAt = new Date(),
+    updatedAt = new Date()
   }) {
     this.title = title?.trim() || ''
     this.company = company?.trim() || ''
     this.location = location?.trim() || ''
-    this.jobUrl = jobUrl || ''
     this.description = description?.trim() || ''
+    this.requirements = Array.isArray(requirements) ? requirements : []
     this.salary = salary?.trim() || ''
-    this.postedDate = postedDate?.trim() || ''
-    this.companyLogoUrl = companyLogoUrl || null
-    this.platform = platform || ''
     this.jobType = jobType?.trim() || ''
+    this.status = status?.trim() || '未申請'
+    this.source = source?.trim() || ''
+    this.sourceId = sourceId?.trim() || ''
+    this.sourceUrl = sourceUrl || ''
+    this.appliedDate = appliedDate || null
+    this.deadline = deadline || null
+    this.notes = notes?.trim() || ''
+    this.platform = platform || ''
+    this.createdAt = createdAt
+    this.updatedAt = updatedAt
   }
 
-  static createFromLinkedIn (data) {
+  static createFromLinkedIn(data) {
     return new Job({
       title: data.title,
       company: data.company,
       location: data.location,
-      jobUrl: data.jobUrl,
       description: data.description,
+      requirements: data.requirements || [],
       salary: data.salary,
-      postedDate: data.postedDate,
-      companyLogoUrl: data.companyLogoUrl,
-      platform: 'LinkedIn'
+      jobType: data.jobType,
+      source: 'LinkedIn',
+      sourceId: data.sourceId || '',
+      sourceUrl: data.jobUrl,
+      platform: 'LinkedIn',
+      createdAt: new Date(),
+      updatedAt: new Date()
     })
   }
 
-  static createFromSEEK (data) {
+  static createFromSEEK(data) {
     return new Job({
       title: data.title,
       company: data.company,
       location: data.location,
-      jobUrl: data.jobUrl,
       description: data.description,
+      requirements: data.requirements || [],
       salary: data.salary,
-      postedDate: data.postedDate,
-      companyLogoUrl: data.companyLogoUrl,
-      platform: 'SEEK'
+      jobType: data.jobType,
+      source: 'SEEK',
+      sourceId: data.sourceId || '',
+      sourceUrl: data.jobUrl,
+      platform: 'SEEK',
+      createdAt: new Date(),
+      updatedAt: new Date()
     })
   }
 
-  static createFromIndeed (data) {
+  static createFromIndeed(data) {
     return new Job({
       title: data.title,
       company: data.company,
       location: data.location,
-      jobUrl: data.jobUrl,
       description: data.description,
+      requirements: data.requirements || [],
       salary: data.salary,
-      postedDate: data.postedDate,
-      companyLogoUrl: data.companyLogoUrl,
+      jobType: data.jobType,
+      source: 'Indeed',
+      sourceId: data.sourceId || '',
+      sourceUrl: data.jobUrl,
       platform: 'Indeed',
-      jobType: data.jobType
+      createdAt: new Date(),
+      updatedAt: new Date()
     })
   }
 }
@@ -522,9 +547,50 @@ const scrapers = {
             'div[class*="workplace"]'
           ].join(','))
 
+          const descriptionNode = node.querySelector([
+            'div[data-testid="jobsnippet_footer"] ul li',
+            '.job-snippet',
+            '.underShelfFooter .heading6 ul li'
+          ].join(','))
+
+          const postedDateNode = node.querySelector('span.date')
+
+          // Get all metadata items and clean up text content
+          const metadataItems = Array.from(node.querySelectorAll([
+            '.metadataContainer li .metadata div[data-testid="attribute_snippet_testid"]',
+            '.metadataContainer li div[data-testid="attribute_snippet_testid"]',
+            '.metadataContainer li div[data-testid^="attribute_snippet"]'
+          ].join(',')))
+            .map(el => {
+              const textContent = Array.from(el.childNodes)
+                .filter(node => node.nodeType === Node.TEXT_NODE)
+                .map(node => node.textContent.trim())
+                .join(' ')
+                .split('+')[0]
+                .trim()
+
+              return textContent || el.textContent.trim().split('+')[0].trim()
+            })
+            .filter(text => text)
+
+          const salaryText = metadataItems.find(text => text.includes('$'))
+          const jobTypeText = metadataItems.find(text =>
+            /\b(Full-time|Part-time|Contract|Temporary|Internship|Casual|Contractor)\b/i.test(text)
+          )
+          const jobType = jobTypeText?.match(/\b(Full-time|Part-time|Contract|Temporary|Internship|Casual|Contractor)\b/i)?.[0] || ''
+
+          const description = descriptionNode?.textContent?.trim()
+            .replace(/…$/, '')
+            .replace(/\s+/g, ' ')
+            .trim()
+
           log(`Title found: ${!!titleNode}`)
           log(`Company found: ${!!companyNode}`)
           log(`Location found: ${!!locationNode}`)
+          log(`Description found: ${!!descriptionNode}`)
+          log(`Salary found: ${!!salaryText}`)
+          log(`Job Type found: ${!!jobType}`)
+          log(`Posted Date found: ${!!postedDateNode}`)
 
           if (titleNode && companyNode) {
             // 创建职位唯一标识
@@ -537,15 +603,38 @@ const scrapers = {
             }
             
             seenJobIds.add(jobId)
-            
-            const job = {
+
+            let jobUrl = ''
+            if (titleNode.href) {
+              jobUrl = titleNode.href
+            } else if (titleNode.closest('a')?.href) {
+              jobUrl = titleNode.closest('a').href
+            } else if (node.querySelector('a[data-jk]')?.href) {
+              jobUrl = node.querySelector('a[data-jk]').href
+            }
+
+            if (!jobUrl.startsWith('http')) {
+              jobUrl = 'https://indeed.com' + jobUrl
+            }
+
+            const job = Job.createFromIndeed({
               title: titleNode.textContent.trim(),
               company: companyNode.textContent.trim(),
-              location: locationNode?.textContent?.trim() || '',
-              jobUrl: titleNode.href || window.location.href,
-              platform: 'Indeed'
-            }
+              location: locationNode?.textContent?.trim(),
+              jobUrl: jobUrl,
+              description: description,
+              salary: salaryText || '',
+              postedDate: postedDateNode?.textContent?.trim(),
+              companyLogoUrl: node.querySelector('img.companyAvatar')?.src || null,
+              jobType: jobType
+            })
+
             log(`Successfully scraped job: ${job.title} at ${job.company}`)
+            log(`Job URL: ${jobUrl}`)
+            log(`Description: ${job.description.substring(0, 100)}...`)
+            log(`Salary: ${job.salary}`)
+            log(`Job Type: ${job.jobType}`)
+            log(`Posted Date: ${job.postedDate}`)
             jobs.push(job)
           } else {
             log('Skipping job due to missing required fields')

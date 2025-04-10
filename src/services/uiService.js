@@ -121,7 +121,7 @@ function createJobCard (job) {
   viewBtn.textContent = 'View Job'
   viewBtn.style.width = '100%' // Make button take full width
   viewBtn.onclick = () => {
-    chrome.tabs.create({ url: job.jobUrl })
+    chrome.tabs.create({ url: job.sourceUrl })
   }
 
   actions.appendChild(viewBtn)
