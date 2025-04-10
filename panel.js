@@ -252,6 +252,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   const locationSelect = document.getElementById('location')
   const exportByApiBtn = document.getElementById('exportByApiBtn')
   const testGetBtn = document.getElementById('testGetBtn')
+  const usertokenBtn = document.getElementById('usertokenBtn')////////////////
 
   // 添加工作数量限制输入框
   const maxJobsContainer = document.createElement('div')
@@ -678,6 +679,26 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   if (testGetBtn) {
     testGetBtn.addEventListener('click', apiTester.testGetJobs)
+  }
+////////////////////////////////////////////////////////////
+  if (usertokenBtn) {
+    usertokenBtn.addEventListener('click', async () => {
+      try {
+        const statusMessage = document.getElementById('statusMessage');
+        const userToken = await storageService.getUserToken();
+        
+        if (userToken) {
+          uiService.showMessage(statusMessage, `成功獲取 user token: ${userToken}`, 'success');
+          console.log('User token:', userToken);
+        } else {
+          uiService.showMessage(statusMessage, '未找到 user token，請確保您已登入 localhost:3000', 'error');
+        }
+      } catch (error) {
+        console.error('獲取 user token 時發生錯誤:', error);
+        const statusMessage = document.getElementById('statusMessage');
+        uiService.showMessage(statusMessage, `獲取 user token 失敗: ${error.message}`, 'error');
+      }
+    });
   }
 })
 

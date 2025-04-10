@@ -48,6 +48,39 @@ async function updateScrapingState (isActive) {
   return chrome.storage.local.set({ isScrapingActive: isActive })
 }
 
+
+
+// Function to get user token from localStorage (新增抓localstorage功能)////////////
+async function getUserToken() {
+  return new Promise((resolve) => {
+    
+    //測試用URL
+    const getLocalstorageTokenUrl = 'https://github.com';  //// localhost:3000
+    
+    chrome.tabs.query({active: true, currentWindow: true}, (tabs) => {
+      const currentTab = tabs[0];
+      if (currentTab && currentTab.url.includes(getLocalstorageTokenUrl)) { 
+        chrome.scripting.executeScript({
+          target: {tabId: currentTab.id},
+          function: () => {
+            //測試用URL
+            const getLocalstorageTokenKey = 'codeNavOpen'; ///user_token
+            return localStorage.getItem(getLocalstorageTokenKey); 
+          }
+        }, (results) => {
+          if (results && results[0] && results[0].result) {
+            resolve(results[0].result);
+          } else {
+            resolve(null);
+          }
+        });
+      } else {
+        resolve(null);
+      }
+    });
+  });
+}
+
 export default {
   loadLastLocation,
   saveLastLocation,
@@ -55,5 +88,6 @@ export default {
   saveLastCountry,
   loadWebsiteSettings,
   saveWebsiteSettings,
-  updateScrapingState
+  updateScrapingState,
+  getUserToken
 } 
