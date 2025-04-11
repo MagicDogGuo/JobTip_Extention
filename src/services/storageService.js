@@ -55,7 +55,7 @@ async function getUserToken() {
   return new Promise((resolve) => {
     
     //測試用URL
-    const getLocalstorageTokenUrl = 'https://github.com';  //// localhost:3000
+    const getLocalstorageTokenUrl = 'http://localhost:3000';// 'https://github.com';  //// localhost:3000
     
     chrome.tabs.query({active: true, currentWindow: true}, (tabs) => {
       const currentTab = tabs[0];
@@ -64,7 +64,7 @@ async function getUserToken() {
           target: {tabId: currentTab.id},
           function: () => {
             //測試用URL
-            const getLocalstorageTokenKey = 'codeNavOpen'; ///user_token
+            const getLocalstorageTokenKey = 'token';//'codeNavOpen'; ///user_token
             return localStorage.getItem(getLocalstorageTokenKey); 
           }
         }, (results) => {

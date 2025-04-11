@@ -10,9 +10,7 @@
     "system.display",
     "activeTab",
     "notifications",
-    "sidePanel",
-    "http://localhost:3000/"
-
+    "sidePanel"
   ],
   "host_permissions": [
     "*://*.linkedin.com/*",

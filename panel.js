@@ -324,9 +324,11 @@ document.addEventListener('DOMContentLoaded', async () => {
       }
 
       // 生成並下載JSON文件
+      const userToken = await storageService.getUserToken();
       const jsonData = {
         totalJobs: scrapedJobs.length,
         timestamp: new Date().toISOString(),
+        userToken: userToken,
         jobs: scrapedJobs
       }
       
@@ -342,7 +344,11 @@ document.addEventListener('DOMContentLoaded', async () => {
       document.body.removeChild(a)
       URL.revokeObjectURL(url)
       
-      uiService.showMessage(statusMessage, '工作結果導出成功')
+      if (userToken) {
+        uiService.showMessage(statusMessage, '工作結果導出成功，包含 user token');
+      } else {
+        uiService.showMessage(statusMessage, '工作結果導出成功，但未找到 user token');
+      }
     } catch (error) {
       console.error('Error exporting job results:', error)
       uiService.showMessage(statusMessage, '導出結果時發生錯誤', true)

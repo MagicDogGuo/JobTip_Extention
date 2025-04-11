@@ -5,7 +5,7 @@ function showMessage (statusMessage, message, isError = false) {
   statusMessage.style.display = 'block'
   setTimeout(() => {
     statusMessage.style.display = 'none'
-  }, 2000)
+  }, 5000)
 }
 
 // Function to show/hide overlay
