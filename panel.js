@@ -155,6 +155,61 @@ const API_GET_JOBS = 'http://localhost:3000/api/jobs'
 // 全局变量
 let scrapedJobs = []
 
+// 全局常量定義
+const JOB_DATA_STRUCTURE = {
+  totalJobs: 0,
+  timestamp: '',
+  userToken: '',
+  jobs: [{
+    title: '',
+    company: '',
+    location: '',
+    description: '',
+    requirements: [],
+    salary: '',
+    jobType: '',
+    status: '未申請',
+    source: '',
+    sourceId: '',
+    sourceUrl: '',
+    appliedDate: null,
+    deadline: null,
+    notes: '',
+    platform: '',
+    createdAt: '',
+    updatedAt: ''
+  }]
+};
+
+// 格式化工作數據的函數
+const formatJobData = (jobs, userToken) => {
+  return {
+    ...JOB_DATA_STRUCTURE,
+    totalJobs: jobs.length,
+    timestamp: new Date().toISOString(),
+    userToken: userToken,
+    jobs: jobs.map(job => ({
+      title: job.title,
+      company: job.company,
+      location: job.location,
+      description: job.description || '',
+      requirements: job.requirements || [],
+      salary: job.salary || '',
+      jobType: job.jobType || '',
+      status: '未申請',
+      source: job.platform,
+      sourceId: job.id || '',
+      sourceUrl: job.url || job.sourceUrl || '',
+      appliedDate: null,
+      deadline: null,
+      notes: '',
+      platform: job.platform,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    }))
+  };
+};
+
 // API 测试功能
 const apiTester = {
   testGetJobs: async () => {
@@ -171,10 +226,14 @@ const apiTester = {
       if (response.ok) {
         const data = await response.json()
         console.log('GET response:', data)
-        uiService.showMessage(statusMessage, `成功获取 ${data.length} 个工作数据`, 'success')
+        uiService.showMessage(statusMessage, `成功获取Get`, 'success')
+
+        // uiService.showMessage(statusMessage, `成功获取 ${data.length} 个工作数据`, 'success')
       } else {
         const errorData = await response.json()
-        uiService.showMessage(statusMessage, `获取失败: ${errorData.message || '未知错误'}`, 'error')
+        uiService.showMessage(statusMessage, `获取失败Get`, 'error')
+
+        // uiService.showMessage(statusMessage, `获取失败: ${errorData.message || '未知错误'}`, 'error')
       }
     } catch (error) {
       console.error('API test error:', error)
@@ -190,8 +249,12 @@ const apiExporter = {
     console.log('Exporting jobs by API')
     try {
       const statusMessage = document.getElementById('statusMessage')
-      console.log('Exporting jobs:', scrapedJobs)
+      // console.log('Exporting jobs:', scrapedJobs)
       if (scrapedJobs.length > 0) {
+        const userToken = await storageService.getUserToken() || '';
+        const exportData = formatJobData(scrapedJobs, userToken);
+        console.log('Exporting jobs:', exportData)
+
         // 调用后端 API
         const apiResponse = await fetch(API_ENDPOINT, {
           method: 'POST',
@@ -199,26 +262,37 @@ const apiExporter = {
             'Content-Type': 'application/json',
             'Accept': 'application/json'
           },
-          body: JSON.stringify(scrapedJobs)
-        })
+          body: JSON.stringify(exportData)
+        });
         
+
         if (apiResponse.ok) {
-          const data = await apiResponse.json()
-          uiService.showMessage(statusMessage, `成功导出 ${data.length} 个工作到后端`, 'success')
+          const data = await apiResponse.json();
+          console.log('导出成功:', data);
+          // uiService.showMessage(statusMessage, `成功导出 ${data.data.length} 个工作到后端`, 'success');
+          /////////////////////////////////////////////
+          if (userToken) {
+            uiService.showMessage(statusMessage, `成功導出${data.data.length} 個工作到後端，包含 user token`, 'success');
+          } else {
+            uiService.showMessage(statusMessage, `成功導出${data.data.length} 個工作到後端，但未找到 user token`);
+          }
+        
         } else {
-          const errorData = await apiResponse.json()
-          uiService.showMessage(statusMessage, `导出失败: ${errorData.message || '未知错误'}`, 'error')
+          const errorData = await apiResponse.json();
+          console.error('API export error:', errorData.message);
+          uiService.showMessage(statusMessage, `导出失败: ${errorData.message || '未知错误'}`, 'error');
         }
       } else {
-        uiService.showMessage(statusMessage, '没有找到可导出的工作', 'error')
+        uiService.showMessage(statusMessage, '没有找到可导出的工作', 'error');
       }
     } catch (error) {
-      console.error('API export error:', error)
-      const statusMessage = document.getElementById('statusMessage')
-      uiService.showMessage(statusMessage, `导出失败: ${error.message}`, 'error')
+      console.error('API export error:', error.message);
+      const statusMessage = document.getElementById('statusMessage');
+      uiService.showMessage(statusMessage, `导出失败: ${error.message}`, 'error');
+
     }
   }
-}
+};
 
 document.addEventListener('DOMContentLoaded', async () => {
   console.log('DOM Content Loaded')
@@ -323,14 +397,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         return
       }
 
-      // 生成並下載JSON文件
       const userToken = await storageService.getUserToken();
-      const jsonData = {
-        totalJobs: scrapedJobs.length,
-        timestamp: new Date().toISOString(),
-        userToken: userToken,
-        jobs: scrapedJobs
-      }
+      const jsonData = formatJobData(scrapedJobs, userToken);
       
       const jsonString = JSON.stringify(jsonData, null, 2)
       const blob = new Blob([jsonString], { type: 'application/json' })
@@ -598,13 +666,10 @@ document.addEventListener('DOMContentLoaded', async () => {
       uiService.showMessage(statusMessage, `Successfully scraped ${scrapedJobs.length} jobs!`)
       
       // 生成並下載JSON文件
-      const jsonData = {
-        totalJobs: scrapedJobs.length,
-        timestamp: new Date().toISOString(),
-        jobs: scrapedJobs
-      }
+      const userToken = await storageService.getUserToken() || '';
+      const exportData = formatJobData(scrapedJobs, userToken);
       
-      const jsonString = JSON.stringify(jsonData, null, 2)
+      const jsonString = JSON.stringify(exportData, null, 2)
       const blob = new Blob([jsonString], { type: 'application/json' })
       const url = URL.createObjectURL(blob)
       
@@ -618,6 +683,11 @@ document.addEventListener('DOMContentLoaded', async () => {
       
       uiService.updateButtonStates(showInJobtipBtn, scrapedJobs.length > 0)
       
+      if (userToken) {
+        uiService.showMessage(statusMessage, '工作結果導出成功，包含 user token');
+      } else {
+        uiService.showMessage(statusMessage, '工作結果導出成功，但未找到 user token');
+      }
       // 注释掉自动发送到Jobtip的代码
       // Automatically trigger show in Jobtip if jobs were found
       // if (scrapedJobs.length > 0) {
@@ -691,7 +761,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     usertokenBtn.addEventListener('click', async () => {
       try {
         const statusMessage = document.getElementById('statusMessage');
-        const userToken = await storageService.getUserToken();
+        const userToken = await storageService.getUserToken() || '';
         
         if (userToken) {
           uiService.showMessage(statusMessage, `成功獲取 user token: ${userToken}`, 'success');

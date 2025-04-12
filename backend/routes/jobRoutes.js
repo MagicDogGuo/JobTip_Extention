@@ -31,18 +31,20 @@ const testJobs = [
 // 獲取所有職位
 router.get('/', async (req, res) => {
   try {
-    // 先检查数据库中是否有数据
-    const existingJobs = await Job.find();
+    // // 先检查数据库中是否有数据
+    // const existingJobs = await Job.find();
     
-    // 如果没有数据，插入测试数据
-    if (existingJobs.length === 0) {
-      await Job.insertMany(testJobs);
-      console.log('已插入测试数据');
-    }
+    // // 如果没有数据，插入测试数据
+    // if (existingJobs.length === 0) {
+    //   await Job.insertMany(testJobs);
+    //   console.log('已插入测试数据');
+    // }
     
-    // 返回所有职位
-    const jobs = await Job.find().sort({ postedDate: -1 });
-    res.json(jobs);
+    // // 返回所有职位
+    // const jobs = await Job.find().sort({ postedDate: -1 });
+    // res.json(jobs);
+    res.json('test Server Get成功');
+
     console.log('成功Get');
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -52,26 +54,74 @@ router.get('/', async (req, res) => {
 // 創建新職位
 router.post('/', async (req, res) => {
   try {
-    console.log('成功Post');
-    const job = new Job(req.body);
-    const savedJob = await job.save();
-    res.status(201).json(savedJob);
+    console.log('收到 POST 請求:', JSON.stringify(req.body, null, 2));
+    
+    // 檢查是否為 exampleJson.json 格式
+    if (req.body.jobs && Array.isArray(req.body.jobs)) {
+      // 處理 exampleJson.json 格式的數據
+      const jobs = req.body.jobs.map(job => {
+        // 確保所有必需字段都有值
+        const jobData = {
+          title: job.title || '',
+          company: job.company || '',
+          location: job.location || '',
+          url: job.sourceUrl || job.url || '',
+          description: job.description || '',
+          salary: job.salary || '',
+          jobType: job.jobType || '',
+          platform: job.platform || 'LinkedIn',
+          requirements: job.requirements || [],
+          status: job.status || '未申請',
+          source: job.source || '',
+          sourceId: job.sourceId || '',
+          sourceUrl: job.sourceUrl || '',
+          appliedDate: job.appliedDate || null,
+          deadline: job.deadline || null,
+          notes: job.notes || '',
+          userToken: req.body.userToken || '',
+          createdAt: job.createdAt || new Date(),
+          updatedAt: job.updatedAt || new Date()
+        };
+
+        // 驗證必需字段
+        if (!jobData.title || !jobData.company || !jobData.location || !jobData.url) {
+          throw new Error(`缺少必需字段: ${JSON.stringify(jobData)}`);
+        }
+
+        return jobData;
+      });
+      
+      const savedJobs = await Job.insertMany(jobs);
+      res.status(201).json({
+        message: `成功保存 ${savedJobs.length} 個工作`,
+        data: savedJobs
+      });
+    } else {
+      // 處理單個工作數據
+      const jobData = {
+        ...req.body,
+        url: req.body.url || req.body.jobUrl || req.body.sourceUrl || '',
+        postedDate: new Date()
+      };
+
+      // 驗證必需字段
+      if (!jobData.title || !jobData.company || !jobData.location || !jobData.url) {
+        throw new Error(`缺少必需字段: ${JSON.stringify(jobData)}`);
+      }
+
+      const job = new Job(jobData);
+      const savedJob = await job.save();
+      res.status(201).json(savedJob);
+    }
   } catch (err) {
-    res.status(400).json({ message: err.message });
+    console.error('保存工作時發生錯誤:', err);
+    res.status(400).json({ 
+      message: err.message,
+      details: err.errors || err
+    });
   }
 });
 
-// 批量創建職位
-router.post('/batch', async (req, res) => {
-  try {
-    console.log('成功Post/batch');
-    const jobs = req.body;
-    const savedJobs = await Job.insertMany(jobs);
-    res.status(201).json(savedJobs);
-  } catch (err) {
-    res.status(400).json({ message: err.message });
-  }
-});
 
 // 根據平台獲取職位
 router.get('/platform/:platform', async (req, res) => {

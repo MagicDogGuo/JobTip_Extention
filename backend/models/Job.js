@@ -1,6 +1,10 @@
 const mongoose = require('mongoose');
 
 const jobSchema = new mongoose.Schema({
+  id: {
+    type: String,
+    default: ''
+  },
   title: {
     type: String,
     required: true
@@ -13,7 +17,7 @@ const jobSchema = new mongoose.Schema({
     type: String,
     required: true
   },
-  jobUrl: {
+  url: {
     type: String,
     required: true
   },
@@ -31,15 +35,52 @@ const jobSchema = new mongoose.Schema({
   },
   platform: {
     type: String,
-    required: true,
-    enum: ['LinkedIn', 'Indeed', 'SEEK']
+    required: true
   },
-  postedDate: {
+  requirements: {
+    type: [String],
+    default: []
+  },
+  status: {
+    type: String,
+    default: 'pending'
+  },
+  source: {
+    type: String,
+    default: ''
+  },
+  sourceId: {
+    type: String,
+    default: ''
+  },
+  sourceUrl: {
+    type: String,
+    default: ''
+  },
+  appliedDate: {
+    type: Date,
+    default: null
+  },
+  deadline: {
+    type: Date,
+    default: null
+  },
+  notes: {
+    type: String,
+    default: ''
+  },
+  userToken: {
+    type: String,
+    default: ''
+  },
+  createdAt: {
+    type: Date,
+    default: Date.now
+  },
+  updatedAt: {
     type: Date,
     default: Date.now
   }
-}, {
-  timestamps: true
 });
 
 module.exports = mongoose.model('Job', jobSchema); 
