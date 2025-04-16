@@ -249,13 +249,17 @@ const apiExporter = {
     console.log('Exporting jobs by API')
     try {
       const statusMessage = document.getElementById('statusMessage')
-      // console.log('Exporting jobs:', scrapedJobs)
       if (scrapedJobs.length > 0) {
-        const userToken = await storageService.getUserToken() || '';
+        const userToken = await storageService.getUserToken();
+        if (!userToken) {
+          uiService.showMessage(statusMessage, '請先登入Jobtip獲取userToken後再導出', 'error');
+          const tab = await tabService.ensureJobtipWebsite(false);
+          return;
+        }
+
         const exportData = formatJobData(scrapedJobs, userToken);
         console.log('Exporting jobs:', exportData)
 
-        // 调用后端 API
         const apiResponse = await fetch(API_ENDPOINT, {
           method: 'POST',
           headers: {
@@ -265,18 +269,10 @@ const apiExporter = {
           body: JSON.stringify(exportData)
         });
         
-
         if (apiResponse.ok) {
           const data = await apiResponse.json();
           console.log('导出成功:', data);
-          // uiService.showMessage(statusMessage, `成功导出 ${data.data.length} 个工作到后端`, 'success');
-          /////////////////////////////////////////////
-          if (userToken) {
-            uiService.showMessage(statusMessage, `成功導出${data.data.length} 個工作到後端，包含 user token`, 'success');
-          } else {
-            uiService.showMessage(statusMessage, `成功導出${data.data.length} 個工作到後端，但未找到 user token`);
-          }
-        
+          uiService.showMessage(statusMessage, `成功導出${data.data.length} 個工作到後端，包含 user token`, 'success');
         } else {
           const errorData = await apiResponse.json();
           console.error('API export error:', errorData.message);
@@ -289,7 +285,6 @@ const apiExporter = {
       console.error('API export error:', error.message);
       const statusMessage = document.getElementById('statusMessage');
       uiService.showMessage(statusMessage, `导出失败: ${error.message}`, 'error');
-
     }
   }
 };
@@ -391,6 +386,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   // Update show in Jobtip button handler
+  // 在本地導出Json文件//////////////////////////////
   showInJobtipBtn.addEventListener('click', async () => {
     console.log('Export JSON button clicked')
     console.log('Jobs to export:', scrapedJobs)
@@ -402,6 +398,12 @@ document.addEventListener('DOMContentLoaded', async () => {
       }
 
       const userToken = await storageService.getUserToken();
+      if (!userToken) {
+        uiService.showMessage(statusMessage, '請先登入Jobtip獲取userToken後再導出', 'error');
+        const tab = await tabService.ensureJobtipWebsite(false);
+        return;
+      }
+
       const jsonData = formatJobData(scrapedJobs, userToken);
       
       const jsonString = JSON.stringify(jsonData, null, 2)
@@ -416,11 +418,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       document.body.removeChild(a)
       URL.revokeObjectURL(url)
       
-      if (userToken) {
-        uiService.showMessage(statusMessage, '工作結果導出成功，包含 user token');
-      } else {
-        uiService.showMessage(statusMessage, '工作結果導出成功，但未找到 user token');
-      }
+      uiService.showMessage(statusMessage, '工作結果導出成功，包含 user token');
     } catch (error) {
       console.error('Error exporting job results:', error)
       uiService.showMessage(statusMessage, '導出結果時發生錯誤', true)
@@ -669,29 +667,32 @@ document.addEventListener('DOMContentLoaded', async () => {
       )
       uiService.showMessage(statusMessage, `Successfully scraped ${scrapedJobs.length} jobs!`)
       
-      // 生成並下載JSON文件
-      const userToken = await storageService.getUserToken() || '';
-      const exportData = formatJobData(scrapedJobs, userToken);
+      // 自動生成並下載JSON文件///////////////////////////
+      // const userToken = await storageService.getUserToken() || '';
+      // const exportData = formatJobData(scrapedJobs, userToken);
       
-      const jsonString = JSON.stringify(exportData, null, 2)
-      const blob = new Blob([jsonString], { type: 'application/json' })
-      const url = URL.createObjectURL(blob)
+      // const jsonString = JSON.stringify(exportData, null, 2)
+      // const blob = new Blob([jsonString], { type: 'application/json' })
+      // const url = URL.createObjectURL(blob)
       
-      const a = document.createElement('a')
-      a.href = url
-      a.download = `jobtip_jobs_${new Date().toISOString().split('T')[0]}.json`
-      document.body.appendChild(a)
-      a.click()
-      document.body.removeChild(a)
-      URL.revokeObjectURL(url)
+      // const a = document.createElement('a')
+      // a.href = url
+      // a.download = `jobtip_jobs_${new Date().toISOString().split('T')[0]}.json`
+      // document.body.appendChild(a)
+      // a.click()
+      // document.body.removeChild(a)
+      // URL.revokeObjectURL(url)
       
-      uiService.updateButtonStates(showInJobtipBtn, scrapedJobs.length > 0)
+      // uiService.updateButtonStates(showInJobtipBtn, scrapedJobs.length > 0)
       
-      if (userToken) {
-        uiService.showMessage(statusMessage, '工作結果導出成功，包含 user token');
-      } else {
-        uiService.showMessage(statusMessage, '工作結果導出成功，但未找到 user token');
-      }
+      // if (userToken) {
+      //   uiService.showMessage(statusMessage, '工作結果導出成功，包含 user token');
+      // } else {
+      //   uiService.showMessage(statusMessage, '工作結果導出成功，但未找到 user token，請先登入Jobtip');
+      // }
+
+
+
       // 注释掉自动发送到Jobtip的代码
       // Automatically trigger show in Jobtip if jobs were found
       // if (scrapedJobs.length > 0) {
@@ -771,7 +772,7 @@ document.addEventListener('DOMContentLoaded', async () => {
           uiService.showMessage(statusMessage, `成功獲取 user token: ${userToken}`, 'success');
           console.log('User token:', userToken);
         } else {
-          uiService.showMessage(statusMessage, '未找到 user token，請確保您已登入 localhost:3000', 'error');
+          uiService.showMessage(statusMessage, '未找到 user token，請確保您已登入jobtip', 'error');
         }
       } catch (error) {
         console.error('獲取 user token 時發生錯誤:', error);
