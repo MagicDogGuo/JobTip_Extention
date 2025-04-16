@@ -3,8 +3,10 @@ async function findJobtipTab () {
   const tabs = await chrome.tabs.query({})
   return tabs.find(tab =>
     tab.url && (
-      tab.url.includes('jobjourney.me/job-market?source=extension') ||
-      tab.url.includes('localhost:5001/job-market?source=extension')
+        tab.url.includes('http://localhost:3000/')
+
+      // tab.url.includes('jobjourney.me/job-market?source=extension') ||
+      // tab.url.includes('localhost:5001/job-market?source=extension')
     )
   )
 }
@@ -19,7 +21,7 @@ async function ensureJobtipWebsite (shouldFocusPopup = true) {
     if (!existingTab) {
       console.log('No existing tab found, creating new tab')
       try {
-        // Get base URL and open new tab
+        // Get base URL and open new tab / 獲取基礎URL並打開新標籤 /////////////////////////
         const baseUrl = await chrome.runtime.sendMessage({ action: 'getBaseUrl' })
         console.log('Got base URL:', baseUrl)
 
@@ -28,7 +30,8 @@ async function ensureJobtipWebsite (shouldFocusPopup = true) {
         }
 
         const manifest = chrome.runtime.getManifest()
-        const url = `${baseUrl}/job-market?source=extension&version=${manifest.version}`
+        //跳出擴充功能頁面/////////////////////////
+        const url = `${baseUrl}/login`
         console.log('Opening Jobtip URL:', url)
 
         const tab = await chrome.tabs.create({

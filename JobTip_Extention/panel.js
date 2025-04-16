@@ -296,6 +296,10 @@ const apiExporter = {
 
 document.addEventListener('DOMContentLoaded', async () => {
   console.log('DOM Content Loaded')
+  
+  // 确保 Jobtip 网站已打开//////////////////////////////
+  const tab = await tabService.ensureJobtipWebsite(false)
+  console.log('Jobtip 网站已打开:', tab)
 
   // 注释掉版本检查部分
   // const versionCheck = await versionService.checkVersion(false)

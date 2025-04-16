@@ -277,6 +277,7 @@ function showUpdateUI ({ currentVersion, minimumVersion, message }) {
   if (updateBtn) {
     updateBtn.addEventListener('click', async () => {
       try {
+        // 确保 Jobtip 网站已打开
         const tab = await tabService.ensureJobtipWebsite(false)
 
         // Explicitly focus on the Jobtip tab
