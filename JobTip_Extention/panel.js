@@ -252,7 +252,7 @@ const apiExporter = {
       if (scrapedJobs.length > 0) {
         const userToken = await storageService.getUserToken();
         if (!userToken) {
-          uiService.showMessage(statusMessage, '請先登入Jobtip獲取userToken後再導出', 'error');
+          uiService.showMessage(statusMessage, '請先登入Jobtip獲取userToke，或保持在Jobtip網頁再導出', 'error');
           const tab = await tabService.ensureJobtipWebsite(false);
           return;
         }
@@ -399,7 +399,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
       const userToken = await storageService.getUserToken();
       if (!userToken) {
-        uiService.showMessage(statusMessage, '請先登入Jobtip獲取userToken後再導出', 'error');
+        uiService.showMessage(statusMessage, '請先登入Jobtip獲取userToken後，或保持在Jobtip網頁再導出', 'error');
         const tab = await tabService.ensureJobtipWebsite(false);
         return;
       }

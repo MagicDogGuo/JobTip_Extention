@@ -606,3 +606,8 @@ button:disabled {
 .user-token-get-btn:hover {
   background-color: var(--primary-dark);
 } 
+
+
+.hidden {
+  display: none;
+}
