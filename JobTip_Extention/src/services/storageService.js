@@ -1,3 +1,5 @@
+import endpoints from '../config/endpoints.js'
+
 // Function to load last used location
 async function loadLastLocation () {
   return new Promise((resolve) => {
@@ -52,21 +54,20 @@ async function updateScrapingState (isActive) {
 
 // Function to get user token from localStorage (新增抓localstorage功能)////////////
 async function getUserToken() {
+  const config = await endpoints.detectEnvironment()
+  const getLocalstorageTokenUrl = config.FRONTEND.JOBTIP_URL
+  const getLocalstorageTokenKey = config.FRONTEND.TOKEN_KEY
+
   return new Promise((resolve) => {
-    
-    //測試用URL
-    const getLocalstorageTokenUrl = 'http://localhost:3000';// 'https://github.com';  //// localhost:3000
-    
     chrome.tabs.query({active: true, currentWindow: true}, (tabs) => {
       const currentTab = tabs[0];
       if (currentTab && currentTab.url.includes(getLocalstorageTokenUrl)) { 
         chrome.scripting.executeScript({
           target: {tabId: currentTab.id},
-          function: () => {
-            //測試用URL
-            const getLocalstorageTokenKey = 'token';//'codeNavOpen'; ///user_token
-            return localStorage.getItem(getLocalstorageTokenKey); 
-          }
+          function: (tokenKey) => {
+            return localStorage.getItem(tokenKey); 
+          },
+          args: [getLocalstorageTokenKey]
         }, (results) => {
           if (results && results[0] && results[0].result) {
             resolve(results[0].result);

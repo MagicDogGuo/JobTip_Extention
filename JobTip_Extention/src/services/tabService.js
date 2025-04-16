@@ -1,13 +1,11 @@
+import endpoints from '../config/endpoints.js'
+
 // Function to check if Jobtip tab exists and is ready
 async function findJobtipTab () {
+  const config = await endpoints.detectEnvironment()
   const tabs = await chrome.tabs.query({})
   return tabs.find(tab =>
-    tab.url && (
-        tab.url.includes('http://localhost:3000/')
-
-      // tab.url.includes('jobjourney.me/job-market?source=extension') ||
-      // tab.url.includes('localhost:5001/job-market?source=extension')
-    )
+    tab.url && tab.url.includes(config.FRONTEND.JOBTIP_URL)
   )
 }
 

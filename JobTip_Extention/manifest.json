@@ -22,6 +22,7 @@
     "http://localhost:5001/*",
     "https://*.JobJourney.me/*",
     "http://localhost:3000/*",
+    "http://localhost:5000/*",
     "https://github.com/*"
   ],
   "action": {
@@ -49,7 +50,10 @@
         "https://*.reed.co.uk/*",
         "https://*.workopolis.com/*",
         "http://localhost:5001/*",
-        "https://*.jobjourney.me/*"
+        "https://*.jobjourney.me/*",
+        "http://localhost:3000/*",
+        "http://localhost:5000/*",
+        "https://github.com/*"
       ],
       "js": [
         "helpers/jobScrapers.js",

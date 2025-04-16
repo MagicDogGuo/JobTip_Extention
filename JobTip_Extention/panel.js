@@ -5,6 +5,7 @@ import jobService from './src/services/jobService.js'
 import scraperService from './src/services/scraperService.js'
 import uiService from './src/services/uiService.js'
 import storageService from './src/services/storageService.js'
+import endpoints from './src/config/endpoints.js'
 
 // Notify background script that side panel is loaded
 if (window.location.pathname.includes('sidepanel.html')) {
@@ -149,8 +150,8 @@ function displayJobs (jobs) {
 }
 
 // API 端点定义
-const API_ENDPOINT = 'http://localhost:3000/api/jobs'
-const API_GET_JOBS = 'http://localhost:3000/api/jobs'
+const API_ENDPOINT = endpoints.DEV_CONFIG.BACKEND.API_ENDPOINT
+const API_GET_JOBS = endpoints.DEV_CONFIG.BACKEND.API_ENDPOINT
 
 // 全局变量
 let scrapedJobs = []

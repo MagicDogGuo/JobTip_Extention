@@ -1,3 +1,5 @@
+import endpoints from './src/config/endpoints.js'
+
 // 導出數據到後端 API
 document.getElementById('exportToAPI').addEventListener('click', async () => {
   try {
@@ -12,8 +14,10 @@ document.getElementById('exportToAPI').addEventListener('click', async () => {
     progressDiv.textContent = 'Exporting jobs to backend API...';
     progressDiv.style.display = 'block';
 
+    const config = await endpoints.detectEnvironment()
+
     // 發送數據到後端 API
-    const response = await fetch('http://localhost:3000/api/jobs/batch', {
+    const response = await fetch(config.BACKEND.BATCH_ENDPOINT, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
