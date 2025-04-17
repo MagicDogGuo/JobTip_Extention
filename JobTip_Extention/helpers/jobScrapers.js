@@ -395,7 +395,7 @@ const scrapers = {
 
       log(`Found SEEK job nodes: ${jobNodes.length}`)
 
-      // 修改為 async 函數
+      // 修改為 async 函數，用for就能夠等待，可以點進頁面詳情//////
       for (let i = 0; i < jobNodes.length; i++) {
         const node = jobNodes[i]
         try {
@@ -450,11 +450,11 @@ const scrapers = {
             jobUrl = 'https://www.seek.com.au' + jobUrl
           }
 
-          // 如果在列表頁面沒有找到 jobType，嘗試從詳情頁面獲取
-          if (!jobType && jobUrl) {
+          // 如果在列表頁面沒有找到 jobType 或 salary，嘗試從詳情頁面獲取
+          if ((!jobType || !salaryNode?.textContent?.trim()) && jobUrl) {
             try {
-              // 使用 await 等待 jobType 獲取完成
-              jobType = await new Promise((resolve, reject) => {
+              // 使用 await 等待詳情頁面數據獲取完成
+              const detailData = await new Promise((resolve, reject) => {
                 chrome.runtime.sendMessage(
                   {
                     action: 'fetchJobDetail',
@@ -466,7 +466,7 @@ const scrapers = {
                       const doc = parser.parseFromString(response.html, 'text/html')
                       
                       // 在詳情頁面查找 jobType
-                      const selectors = [
+                      const jobTypeSelectors = [
                         'a[href*="-jobs/full-time"]',
                         'a[href*="-jobs/part-time"]',
                         'a[href*="-jobs/casual"]',
@@ -483,26 +483,84 @@ const scrapers = {
                         'span[data-automation="job-detail-work-type"]'
                       ]
 
+                      // 在詳情頁面查找 posted date
+                      const postedDateSelectors = [
+                        'span[class*="_1ubeeig4z"][class*="_1oxsqkd0"]',
+                        'span[class*="gg45di0"][class*="_1ubeeig4z"]',
+                        'span[class*="_1oxsqkd22"]',
+                        'span[class*="_18ybopc4"]',
+                        'span[class*="_1oxsqkd7"]',
+                        'span[data-automation="job-detail-date"]',
+                        'span[data-automation="jobListingDate"]'
+                      ]
+
+                      // 在詳情頁面查找 salary
+                      const salarySelectors = [
+                        'span[data-automation="jobSalary"]',
+                        'div[data-automation="jobSalary"]',
+                        'span[class*="salary"]',
+                        'div[class*="salary"]',
+                        'span[data-automation="job-detail-salary"]',
+                        'div[data-automation="job-detail-salary"]',
+                        'span[data-automation="job-detail-remuneration"]',
+                        'div[data-automation="job-detail-remuneration"]'
+                      ]
+
                       // 記錄每個選擇器的結果
-                      selectors.forEach(selector => {
+                      jobTypeSelectors.forEach(selector => {
                         const element = doc.querySelector(selector)
-                        log(`Selector ${selector} found: ${!!element}`)
+                        log(`Job Type Selector ${selector} found: ${!!element}`)
                         if (element) {
-                          log(`Element content: ${element.textContent.trim()}`)
+                          log(`Job Type Element content: ${element.textContent.trim()}`)
                         }
                       })
 
-                      const detailJobTypeNode = doc.querySelector(selectors.join(','))
-                      log(`detailJobTypeNode found: ${!!detailJobTypeNode}`)
+                      salarySelectors.forEach(selector => {
+                        const element = doc.querySelector(selector)
+                        log(`Salary Selector ${selector} found: ${!!element}`)
+                        if (element) {
+                          log(`Salary Element content: ${element.textContent.trim()}`)
+                        }
+                      })
+
+                      const detailJobTypeNode = doc.querySelector(jobTypeSelectors.join(','))
+                      const detailSalaryNode = doc.querySelector(salarySelectors.join(','))
+                      const detailPostedDateNode = doc.querySelector(postedDateSelectors.join(','))
                       
-                      if (detailJobTypeNode) {
-                        const type = detailJobTypeNode.textContent.trim()
-                        log(`Found job type: ${type}`)
-                        resolve(type)
-                      } else {
-                        log('No job type found')
-                        resolve('')
+                      log(`detailJobTypeNode found: ${!!detailJobTypeNode}`)
+                      log(`detailSalaryNode found: ${!!detailSalaryNode}`)
+                      log(`detailPostedDateNode found: ${!!detailPostedDateNode}`)
+
+                      // 將發布日期文字轉換為具體日期
+                      let createdAt = new Date()
+                      if (detailPostedDateNode) {
+                        const postedText = detailPostedDateNode.textContent.trim()
+                        log(`Found posted date text: ${postedText}`)
+                        
+                        // 解析日期文字，例如 "Posted 27d ago"
+                        const daysMatch = postedText.match(/Posted (\d+)d ago/)
+                        const hoursMatch = postedText.match(/Posted (\d+)h ago/)
+                        const minutesMatch = postedText.match(/Posted (\d+)m ago/)
+                        
+                        if (daysMatch) {
+                          const days = parseInt(daysMatch[1])
+                          createdAt = new Date(Date.now() - days * 24 * 60 * 60 * 1000)
+                        } else if (hoursMatch) {
+                          const hours = parseInt(hoursMatch[1])
+                          createdAt = new Date(Date.now() - hours * 60 * 60 * 1000)
+                        } else if (minutesMatch) {
+                          const minutes = parseInt(minutesMatch[1])
+                          createdAt = new Date(Date.now() - minutes * 60 * 1000)
+                        }
+                        
+                        log(`Converted date: ${createdAt.toISOString()}`)
                       }
+                      
+                      resolve({
+                        jobType: detailJobTypeNode?.textContent?.trim() || '',
+                        salary: detailSalaryNode?.textContent?.trim() || '',
+                        createdAt: createdAt
+                      })
                     } else {
                       log(`Error fetching job detail: ${response?.error || 'Unknown error'}`)
                       reject(new Error(response?.error || 'Unknown error'))
@@ -510,9 +568,24 @@ const scrapers = {
                   }
                 )
               })
+
+              // 更新 jobType、salary 和 createdAt
+              if (!jobType) {
+                jobType = detailData.jobType
+                log(`Updated job type from detail page: ${jobType}`)
+              }
+              
+              if (!salaryNode?.textContent?.trim()) {
+                salaryNode = { textContent: detailData.salary }
+                log(`Updated salary from detail page: ${detailData.salary}`)
+              }
+
+              // 更新 createdAt
+              createdAt = detailData.createdAt
+              log(`Updated createdAt from detail page: ${createdAt.toISOString()}`)
+
             } catch (error) {
-              log(`Error in job type fetching: ${error.message}`)
-              jobType = ''
+              log(`Error in job detail fetching: ${error.message}`)
             }
           }
 
@@ -533,9 +606,8 @@ const scrapers = {
               jobUrl: jobUrl,
               description: descriptionNode?.textContent?.trim(),
               salary: salaryNode?.textContent?.trim(),
-              postedDate: postedDateNode?.textContent?.trim(),
-              companyLogoUrl: null,
-              jobType: jobType
+              jobType: jobType,
+              createdAt: createdAt
             })
             log('Successfully scraped SEEK job:')
             log(`Title: ${job.title}`)
