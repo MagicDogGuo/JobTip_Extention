@@ -63,7 +63,7 @@ class Job {
       description: data.description,
       requirements: data.requirements || [],
       salary: data.salary,
-      jobType: data.jobType,
+      jobType: data.jobType || '',
       source: 'SEEK',
       sourceId: data.sourceId || '',
       sourceUrl: data.jobUrl,
@@ -361,8 +361,18 @@ const scrapers = {
     isMatch: (url) => url.includes('seek.com.au') || url.includes('seek.co.nz'),
     scrapeJobList: async () => {
       const jobs = []
-      console.log('=== SEEK Scraping Started ===')
-      console.log('Current URL:', window.location.href)
+      const seekLogs = []
+      
+      const log = (message) => {
+        console.log(message)
+        seekLogs.push(message)
+      }
+
+      log('=== SEEK Scraping Started ===')
+      log(`Current URL: ${window.location.href}`)
+      log(`Document readyState: ${document.readyState}`)
+      log(`Page content length: ${document.body.innerHTML.length}`)
+      log(`Page title: ${document.title}`)
 
       // Try multiple possible selectors
       const selectors = [
@@ -378,16 +388,18 @@ const scrapers = {
         const nodes = document.querySelectorAll(selector)
         if (nodes.length > 0) {
           jobNodes = nodes
-          console.log('Using selector:', selector)
+          log(`Using selector: ${selector}`)
           break
         }
       }
 
-      console.log('Found SEEK job nodes:', jobNodes.length)
+      log(`Found SEEK job nodes: ${jobNodes.length}`)
 
-      jobNodes.forEach(node => {
+      // 修改為 async 函數
+      for (let i = 0; i < jobNodes.length; i++) {
+        const node = jobNodes[i]
         try {
-          console.log(`\nProcessing SEEK job:`)
+          log(`\nProcessing SEEK job ${i + 1}:`)
 
           const titleNode =
             node.querySelector('[data-testid="job-card-title"]') ||
@@ -399,7 +411,7 @@ const scrapers = {
             node.querySelector('[data-automation="jobCompany"]') ||
             node.querySelector('span[class*="l1r1184z"] a[data-automation="jobCompany"]') ||
             node.querySelector('div.snwpn00 a[data-automation="jobCompany"]') ||
-            node.querySelector('span._1l99f880 a[data-type="company"]')
+            node.querySelector('span._1yyt8p60 a[data-type="company"]')
 
           const locationNode =
             node.querySelector('span[data-automation="jobCardLocation"]') ||
@@ -409,27 +421,138 @@ const scrapers = {
           const descriptionNode = node.querySelector('span[data-testid="job-card-teaser"]')
           const salaryNode = node.querySelector('span[data-automation="jobSalary"]')
           const postedDateNode = node.querySelector('span[data-automation="jobListingDate"] div._1kme6z20')
+          
+          // 修改 jobType 的選擇器
+          const jobTypeNode = node.querySelector([
+            'a[href*="-jobs/full-time"]',
+            'a[href*="-jobs/part-time"]',
+            'a[href*="-jobs/casual"]',
+            'a[href*="-jobs/contract"]',
+            'span[data-automation="jobType"]',
+            'span[class*="job-type"]',
+            'div[class*="job-type"]'
+          ].join(','))
+          
+          let jobType = jobTypeNode ? jobTypeNode.textContent.trim() : ''
+
+          // 修改 URL 的獲取方式
+          let jobUrl = ''
+          if (titleNode?.href) {
+            jobUrl = titleNode.href
+          } else if (titleNode?.closest('a')?.href) {
+            jobUrl = titleNode.closest('a').href
+          } else if (node.querySelector('a[data-automation="jobTitle"]')?.href) {
+            jobUrl = node.querySelector('a[data-automation="jobTitle"]').href
+          }
+
+          // 確保 URL 是完整的
+          if (jobUrl && !jobUrl.startsWith('http')) {
+            jobUrl = 'https://www.seek.com.au' + jobUrl
+          }
+
+          // 如果在列表頁面沒有找到 jobType，嘗試從詳情頁面獲取
+          if (!jobType && jobUrl) {
+            try {
+              // 使用 await 等待 jobType 獲取完成
+              jobType = await new Promise((resolve, reject) => {
+                chrome.runtime.sendMessage(
+                  {
+                    action: 'fetchJobDetail',
+                    url: jobUrl
+                  },
+                  (response) => {
+                    if (response && response.html) {
+                      const parser = new DOMParser()
+                      const doc = parser.parseFromString(response.html, 'text/html')
+                      
+                      // 在詳情頁面查找 jobType
+                      const selectors = [
+                        'a[href*="-jobs/full-time"]',
+                        'a[href*="-jobs/part-time"]',
+                        'a[href*="-jobs/casual"]',
+                        'a[href*="-jobs/contract"]',
+                        'span[data-automation="jobType"]',
+                        'span[class*="job-type"]',
+                        'div[class*="job-type"]',
+                        'span[data-automation="job-work-type"]',
+                        'div[data-automation="job-work-type"]',
+                        'a[class*="job-type"]',
+                        'div[class*="work-type"]',
+                        'span[class*="work-type"]',
+                        'div[data-automation="job-detail-work-type"]',
+                        'span[data-automation="job-detail-work-type"]'
+                      ]
+
+                      // 記錄每個選擇器的結果
+                      selectors.forEach(selector => {
+                        const element = doc.querySelector(selector)
+                        log(`Selector ${selector} found: ${!!element}`)
+                        if (element) {
+                          log(`Element content: ${element.textContent.trim()}`)
+                        }
+                      })
+
+                      const detailJobTypeNode = doc.querySelector(selectors.join(','))
+                      log(`detailJobTypeNode found: ${!!detailJobTypeNode}`)
+                      
+                      if (detailJobTypeNode) {
+                        const type = detailJobTypeNode.textContent.trim()
+                        log(`Found job type: ${type}`)
+                        resolve(type)
+                      } else {
+                        log('No job type found')
+                        resolve('')
+                      }
+                    } else {
+                      log(`Error fetching job detail: ${response?.error || 'Unknown error'}`)
+                      reject(new Error(response?.error || 'Unknown error'))
+                    }
+                  }
+                )
+              })
+            } catch (error) {
+              log(`Error in job type fetching: ${error.message}`)
+              jobType = ''
+            }
+          }
+
+          log(`Title found: ${!!titleNode}`)
+          log(`Company found: ${!!companyNode}`)
+          log(`Location found: ${!!locationNode}`)
+          log(`Description found: ${!!descriptionNode}`)
+          log(`Salary found: ${!!salaryNode}`)
+          log(`Job Type found: ${!!jobTypeNode}`)
+          log(`Posted Date found: ${!!postedDateNode}`)
+          log(`Job URL: ${jobUrl}`)
 
           if (titleNode && companyNode) {
             const job = Job.createFromSEEK({
               title: titleNode.textContent.trim(),
               company: companyNode.textContent.trim(),
               location: locationNode?.textContent?.trim(),
-              jobUrl: titleNode.href || window.location.href,
+              jobUrl: jobUrl,
               description: descriptionNode?.textContent?.trim(),
               salary: salaryNode?.textContent?.trim(),
               postedDate: postedDateNode?.textContent?.trim(),
-              companyLogoUrl: null
+              companyLogoUrl: null,
+              jobType: jobType
             })
-            console.log('Successfully scraped SEEK job:', job)
+            log('Successfully scraped SEEK job:')
+            log(`Title: ${job.title}`)
+            log(`Company: ${job.company}`)
+            log(`Location: ${job.location}`)
+            log(`Job Type: ${job.jobType}`)
+            log(`URL: ${job.jobUrl}`)
             jobs.push(job)
+          } else {
+            log('Skipping job due to missing required fields')
           }
         } catch (error) {
-          console.error('Error scraping SEEK job:', error)
+          log(`Error scraping SEEK job: ${error.message}`)
         }
-      })
+      }
 
-      // Check for next page - using valid CSS selectors that target the last "Next" button
+      // Check for next page
       const nextButton = document.querySelector([
         'li:last-child a[rel*="next"][aria-hidden="false"]',
         'li:last-child a[data-automation^="page-"]:not([aria-current])'
@@ -439,13 +562,21 @@ const scrapers = {
         ? nextButton.href
         : null
 
-      console.log(`=== SEEK Scraping Complete: ${jobs.length} jobs found ===`)
-      console.log('Next URL:', nextUrl)
+      log(`Next URL: ${nextUrl || 'No next page available'}`)
 
-      return {
-        jobs,
-        nextUrl
-      }
+      // Save logs to a file
+      const blob = new Blob([seekLogs.join('\n')], { type: 'text/plain' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = 'seek_scraper_logs.txt'
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+
+      log(`=== SEEK Scraping Complete: ${jobs.length} jobs found ===`)
+      return { jobs, nextUrl }
     },
     scrapeJobDetail: () => {
       try {

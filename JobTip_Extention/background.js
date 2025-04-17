@@ -98,4 +98,16 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     })
     return true // Required for async response
   }
+
+  if (request.action === 'fetchJobDetail') {
+    fetch(request.url)
+      .then(response => response.text())
+      .then(html => {
+        sendResponse({ html })
+      })
+      .catch(error => {
+        sendResponse({ error: error.message })
+      })
+    return true // 保持消息通道开放
+  }
 }) 

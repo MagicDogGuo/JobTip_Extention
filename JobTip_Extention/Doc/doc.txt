@@ -21,3 +21,18 @@
   createdAt: Date,       // 创建时间
   updatedAt: Date        // 更新时间
 }
+
+
+
+✅ LinkedIn
+Job ID: 4187050460
+提取自參數 currentJobId=4187050460
+
+✅ Indeed
+Indeed 的網址不像 LinkedIn 或 Seek 一樣有清楚的 jobId，但可依據 clk?mo=r&ad=... 中的廣告參數當作唯一識別依據（實際 ID 可能是內部生成，不易直接提取出 ID 編號）。
+Job URL 中 ad 參數值可作為唯一識別：
+ad=-6NYlbfkN0CnM4TERr6XuVBW3VTRACvDXDx9S3Pbn6a0SwhkmoLTiNuchFC0m8cW8YohuK_kMvnug4I3JtHAB38b09Oi...
+
+✅ Seek
+Job ID: 83551418
+提取自 .../job/83551418

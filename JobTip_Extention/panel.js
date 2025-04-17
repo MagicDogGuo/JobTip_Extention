@@ -189,25 +189,45 @@ const formatJobData = (jobs, userToken) => {
     totalJobs: jobs.length,
     timestamp: new Date().toISOString(),
     userToken: userToken,
-    jobs: jobs.map(job => ({
-      title: job.title,
-      company: job.company,
-      location: job.location,
-      description: job.description || '',
-      requirements: job.requirements || [],
-      salary: job.salary || '',
-      jobType: job.jobType || '',
-      status: '未申請',
-      source: job.platform,
-      sourceId: job.id || '',
-      sourceUrl: job.url || job.sourceUrl || '',
-      appliedDate: null,
-      deadline: null,
-      notes: '',
-      platform: job.platform,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
-    }))
+    jobs: jobs.map(job => {
+      // 从 sourceUrl 提取 ID
+      let sourceId = '';
+      const sourceUrl = job.url || job.sourceUrl || '';
+      
+      if (job.platform === 'LinkedIn') {
+        // LinkedIn: 从 currentJobId 参数提取
+        const match = sourceUrl.match(/currentJobId=(\d+)/);
+        sourceId = match ? match[1] : '';
+      } else if (job.platform === 'Indeed') {
+        // Indeed: 从 ad 参数提取
+        const match = sourceUrl.match(/ad=([^&]+)/);
+        sourceId = match ? match[1] : '';
+      } else if (job.platform === 'SEEK') {
+        // Seek: 从 URL 中提取 job ID
+        const match = sourceUrl.match(/\/job\/(\d+)(?:\?|#|$)/);
+        sourceId = match ? match[1] : '';
+      }
+
+      return {
+        title: job.title,
+        company: job.company,
+        location: job.location,
+        description: job.description || '',
+        requirements: job.requirements || [],
+        salary: job.salary || '',
+        jobType: job.jobType || '',
+        status: '未申請',
+        source: job.platform,
+        sourceId: sourceId,
+        sourceUrl: sourceUrl,
+        appliedDate: null,
+        deadline: null,
+        notes: '',
+        platform: job.platform,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      };
+    })
   };
 };
 
