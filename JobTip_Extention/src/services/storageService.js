@@ -61,7 +61,7 @@ async function getUserToken() {
   return new Promise((resolve) => {
     chrome.tabs.query({active: true, currentWindow: true}, (tabs) => {
       const currentTab = tabs[0];
-      if (currentTab && currentTab.url.includes(getLocalstorageTokenUrl)) { 
+      if (currentTab && currentTab.url.includes(getLocalstorageTokenUrl)) {
         chrome.scripting.executeScript({
           target: {tabId: currentTab.id},
           function: (tokenKey) => {

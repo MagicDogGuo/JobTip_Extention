@@ -16,11 +16,12 @@ const DEV_CONFIG = {
   }
 }
 
+
 // 生產環境配置
 const PROD_CONFIG = {
   FRONTEND: {
-    BASE_URL: 'https://jobtip.com',
-    JOBTIP_URL: 'https://jobtip.com',
+    BASE_URL: 'https://jobtip.com/',
+    JOBTIP_URL: 'jobtip.com',
     TOKEN_KEY: 'token'
   },
   BACKEND: {
