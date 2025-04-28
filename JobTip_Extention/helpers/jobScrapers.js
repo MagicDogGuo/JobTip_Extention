@@ -167,12 +167,12 @@ const scrapers = {
         log('No next page button found')
       }
 
-      jobNodes.forEach((node, index) => {
+      // 使用 for...of 循環處理每個職位
+      for (const node of jobNodes) {
         try {
-          log(`\nProcessing LinkedIn job ${index + 1}:`)
+          log(`\nProcessing LinkedIn job:`)
           log(`Node HTML: ${node.outerHTML.substring(0, 200)}...`)
 
-          // Try multiple selectors for each field
           const titleNode = node.querySelector([
             'a[class*="job-card-list__title"]',
             'a[class*="job-card-container__link"]',
@@ -245,25 +245,228 @@ const scrapers = {
             .filter(text => text)
           log(`Found ${metadataItems.length} metadata items`)
 
-          // Find salary (item containing currency symbols or ranges)
-          const salaryText = metadataItems.find(text =>
-            /[$€£¥]|per\s+|annum|annual|year|month|hour|week/i.test(text)
-          )
-          log(`Salary found: ${!!salaryText}`)
+          let jobUrl = jobUrlNode?.href || '';
+          let salaryText = '';
+          let jobType = '';
+          let description = '';
 
-          // Get job description from the job details section
-          const descriptionNode = node.querySelector([
-            'div[class*="description"]',
-            'div[class*="snippet"]',
-            'div[class*="job-card-container__description"]',
-            'div[class*="job-card-list__description"]',
-            'div[class*="job-card-container__snippet"]',
-            'div[class*="job-card-list__snippet"]'
-          ].join(','))
-          const description = descriptionNode?.textContent?.trim()
-            .replace(/\s+/g, ' ')  // Normalize whitespace
-            .trim()
-          log(`Description found: ${!!description}`)
+          // 如果有職位詳情頁面URL，嘗試獲取更多資訊
+          if (jobUrl) {
+            log(`-----------------sdsdddddddddddddddddddddddddddddddd`);
+            log(`Fetching job details from: ${jobUrl}`);
+
+            try {
+              // 使用 Promise 處理詳情頁面數據獲取
+              const detailData = await new Promise((resolve, reject) => {
+                chrome.runtime.sendMessage(
+                  {
+                    action: 'fetchJobDetail',
+                    url: jobUrl
+                  },
+                  (response) => {
+                    if (response && response.html) {
+                      const parser = new DOMParser();
+                      const doc = parser.parseFromString(response.html, 'text/html');
+                      
+                      log("++++++doc: "+doc);
+
+                      // 輸出完整的 HTML 文檔
+                      log('=== Full HTML Document ===')
+                      log(doc.documentElement.outerHTML)
+                      log('=== End of HTML Document ===')
+
+                      // 在詳情頁面查找薪資資訊
+                      const salarySelectors = [
+                        'span.ui-label.text-body-small',
+                        'span[class*="salary"]',
+                        'span[class*="compensation"]',
+                        'div[class*="salary"]',
+                        'div[class*="compensation"]',
+                        'span[data-testid="job-detail-salary"]',
+                        'div[data-testid="job-detail-salary"]',
+                        'span[data-testid="job-detail-remuneration"]',
+                        'div[data-testid="job-detail-remuneration"]'
+                      ];
+
+                      // 在詳情頁面查找工作類型
+                      const jobTypeSelectors = [
+                        'span.ui-label.text-body-small',
+                        'span[class*="workplace-type"]',
+                        'span[class*="job-type"]',
+                        'div[class*="workplace-type"]',
+                        'div[class*="job-type"]',
+                        'span[data-testid="job-detail-work-type"]',
+                        'div[data-testid="job-detail-work-type"]',
+                        'span[class*="ui-label"]',
+                        'span[class*="text-body-small"]',
+                        'span[class*="job-type"]',
+                        'div[class*="job-type"]'
+                      ];
+
+                      // 使用正則表達式從 HTML 中提取工作描述
+                      let description = '';
+                      try {
+                        const html = doc.documentElement.outerHTML;
+                        // 定義關鍵字正則表達式
+                        const descriptionKeywords = /(Join|experience|We are|Be part of|At [A-Za-z ]+|Our company|Our mission|Our services|Our products|Our solutions|We strive|We believe|We provide|We deliver|We support|We build|We develop|We lead|We empower|We care|We value diversity|Our culture|Our commitment|Working with|As part of|TCS follows|Founded in|Headquartered in|Since \d{4}|Across [A-Za-z ]+)/i;
+                        
+                        // 找出所有 "text" 區塊
+                        const textBlocks = html.match(/"text":"([^"]*)"/g) || [];
+                        
+                        // 遍歷每個文本區塊
+                        for (const block of textBlocks) {
+                          // 提取文本內容
+                          const text = block.match(/"text":"([^"]*)"/)[1];
+                          
+                          // 檢查文本是否符合條件
+                          if (text.length > 200 && // 長度超過 200 字
+                              !text.match(/^(Role|Responsibilities|Requirements|Qualifications|Skills|Experience|Education|Benefits|About|Overview):/i) && // 不是小節開頭
+                              descriptionKeywords.test(text)) { // 包含關鍵字
+                            description = text.replace(/\\n/g, '\n');
+                            break; // 找到符合條件的文本後停止
+                          }
+                        }
+                      } catch (error) {
+                        log(`Error extracting job description with regex: ${error.message}`);
+                      }
+
+                      // 如果正則表達式匹配失敗，嘗試使用相對位置
+                      if (!description) {
+                        try {
+                          // 首先找到工作類型元素
+                          const jobTypeElement = doc.querySelector('span.description__job-criteria-text');
+                          if (jobTypeElement) {
+                            // 找到工作類型元素的父元素
+                            const parentElement = jobTypeElement.closest('div.description__job-criteria');
+                            if (parentElement) {
+                              // 找到父元素的下一個兄弟元素，這通常是工作描述
+                              const descriptionElement = parentElement.nextElementSibling;
+                              if (descriptionElement) {
+                                // 獲取所有段落
+                                const paragraphs = descriptionElement.querySelectorAll('p');
+                                description = Array.from(paragraphs)
+                                  .map(p => p.textContent.trim())
+                                  .filter(text => text)
+                                  .join('\n');
+                              }
+                            }
+                          }
+                        } catch (error) {
+                          log(`Error extracting job description with relative position: ${error.message}`);
+                        }
+                      }
+
+                      // 如果相對位置也失敗，嘗試使用選擇器
+                      if (!description) {
+                        const descriptionNode = doc.querySelector([
+                          'div.jobs-box__html-content',
+                          'div[data-testid="job-detail-description"]',
+                          'div[class*="job-description"]',
+                          'div[class*="description"]',
+                          'div[class*="jobs-box__html-content"]',
+                          'div[class*="jobs-description"]'
+                        ].join(','));
+                        
+                        if (descriptionNode) {
+                          const paragraphs = descriptionNode.querySelectorAll('p');
+                          description = Array.from(paragraphs)
+                            .map(p => p.textContent.trim())
+                            .filter(text => text)
+                            .join('\n');
+                        }
+                      }
+
+                      // 使用正則表達式從 HTML 中提取工資
+                      let salary = '';
+                      try {
+                        const html = doc.documentElement.outerHTML;
+                        const salaryRegex = /"text":"(\$[0-9,]+(\s*-\s*\$[0-9,]+)?(\s*per\s*(year|month|hour|week))?)"/;
+                        const match = html.match(salaryRegex);
+                        if (match && match[1]) {
+                          salary = match[1];
+                        }
+                      } catch (error) {
+                        log(`Error extracting salary with regex: ${error.message}`);
+                      }
+
+                      // 如果正則表達式匹配失敗，嘗試使用選擇器
+                      if (!salary) {
+                        const detailSalaryNode = doc.querySelector(salarySelectors.join(','));
+                        salary = detailSalaryNode?.textContent?.trim() || '';
+                      }
+                      
+                      log(`Detail salary node found: ${!!salary}`);
+
+                      // 使用正則表達式從 HTML 中提取工作類型
+                      try {
+                        const html = doc.documentElement.outerHTML;
+                        // 更新正則表達式以匹配更多格式
+                        const jobTypeRegex = /"text":"(Full-time|Part-time|Contract|Casual|Permanent|Temporary|Internship|Apprenticeship|Volunteer|Freelance|Seasonal|Fixed-term|Graduate|Entry level|Mid-Senior level|Senior level|Executive|Director|Not Applicable)"/;
+                        const match = html.match(jobTypeRegex);
+                        if (match && match[1]) {
+                          jobType = match[1];
+                        }
+                      } catch (error) {
+                        log(`Error extracting job type with regex: ${error.message}`);
+                      }
+
+                      // 如果正則表達式匹配失敗，嘗試使用選擇器
+                      if (!jobType) {
+                        const jobTypeSelectors = [
+                          'span.description__job-criteria-text',
+                          'span.job-details-jobs-unified-top-card__job-type',
+                          'span.job-details-jobs-unified-top-card__workplace-type',
+                          'span.job-posting-type',
+                          'span[class*="job-type"]',
+                          'span[class*="workplace-type"]',
+                          'span.ui-label.text-body-small'
+                        ];
+                        const detailJobTypeNode = doc.querySelector(jobTypeSelectors.join(','));
+                        jobType = detailJobTypeNode?.textContent?.trim() || '';
+                      }
+
+                      // 如果選擇器也失敗，嘗試從 metadata 中提取
+                      if (!jobType) {
+                        const metadataItems = Array.from(doc.querySelectorAll('span.job-card-container__footer-item'))
+                          .map(item => item.textContent.trim())
+                          .filter(text => text);
+                        
+                        const jobTypeText = metadataItems.find(text =>
+                          text.match(/\b(Full-time|Part-time|Contract|Temporary|Internship|Casual|Contractor)\b/i)
+                        );
+                        
+                        if (jobTypeText) {
+                          jobType = jobTypeText.match(/\b(Full-time|Part-time|Contract|Temporary|Internship|Casual|Contractor)\b/i)[0];
+                        }
+                      }
+
+                      log(`Job type found: ${jobType}`);
+
+                      resolve({
+                        salary: salary,
+                        jobType: jobType,
+                        description: description
+                      });
+                    } else {
+                      log(`Error fetching job detail: ${response?.error || 'Unknown error'}`);
+                      reject(new Error(response?.error || 'Unknown error'));
+                    }
+                  }
+                );
+              });
+
+              // 更新薪資、工作類型和描述
+              salaryText = detailData.salary;
+              jobType = detailData.jobType;
+              description = detailData.description;
+              log(`Updated salary from detail page: ${salaryText}`);
+              log(`Updated job type from detail page: ${jobType}`);
+              log(`Updated description from detail page: ${description.substring(0, 100)}...`);
+
+            } catch (error) {
+              log(`Error in job detail fetching: ${error.message}`);
+            }
+          }
 
           // Get posted date
           const postedDateNode = node.querySelector([
@@ -284,7 +487,7 @@ const scrapers = {
           log(`Salary: ${salaryText}`)
           log(`Description: ${description?.substring(0, 100)}...`)
           log(`Posted Date: ${postedDateNode?.textContent?.trim()}`)
-          log(`URL: ${jobUrlNode?.href}`)
+          log(`URL: ${jobUrl}`)
           log(`Logo: ${logoNode?.src}`)
           log(`All Metadata: ${JSON.stringify(metadataItems)}`)
 
@@ -300,8 +503,9 @@ const scrapers = {
               salary: salaryText || '',
               description: description || '',
               postedDate: postedDateNode?.textContent?.trim(),
-              jobUrl: jobUrlNode?.href || window.location.href,
-              companyLogoUrl: logoNode?.src
+              jobUrl: jobUrl,
+              companyLogoUrl: logoNode?.src,
+              jobType: jobType || ''
             })
             log('Successfully scraped LinkedIn job')
             jobs.push(job)
@@ -312,7 +516,7 @@ const scrapers = {
           log(`Error scraping LinkedIn job: ${error.message}`)
           log(`Error stack: ${error.stack}`)
         }
-      })
+      }
 
       // Save logs to a file
       const blob = new Blob([logMessages.join('\n')], { type: 'text/plain' })
