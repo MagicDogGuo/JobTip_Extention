@@ -1056,6 +1056,12 @@ const scrapers = {
               }
             }
 
+            let sourceId = '';
+            const jkMatch = jobUrl.match(/[?&]jk=([^&]+)/);
+            if (jkMatch) {
+              sourceId = jkMatch[1];
+            }
+
             const job = Job.createFromIndeed({
               title: titleNode.textContent.trim(),
               company: companyNode.textContent.trim(),
@@ -1065,7 +1071,8 @@ const scrapers = {
               salary: salaryText || '',
               postedDate: postedDateNode?.textContent?.trim(),
               companyLogoUrl: node.querySelector('img.companyAvatar')?.src || null,
-              jobType: finalJobType
+              jobType: finalJobType,
+              sourceId: sourceId
             })
 
             log(`Successfully scraped job: ${job.title} at ${job.company}`)

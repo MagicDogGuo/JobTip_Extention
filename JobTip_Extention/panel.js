@@ -200,7 +200,7 @@ const formatJobData = (jobs, userToken) => {
         sourceId = match ? match[1] : '';
       } else if (job.platform === 'Indeed') {
         // Indeed: 从 ad 参数提取
-        const match = sourceUrl.match(/ad=([^&]+)/);
+        const match = sourceUrl.match(/jk=([^&]+)/);
         sourceId = match ? match[1] : '';
       } else if (job.platform === 'SEEK') {
         // Seek: 从 URL 中提取 job ID
