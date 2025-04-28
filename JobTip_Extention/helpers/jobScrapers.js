@@ -924,7 +924,8 @@ const scrapers = {
       const seenJobIds = new Set()
 
       // Scrape current page
-      jobNodes.forEach((node, index) => {
+      for (let index = 0; index < jobNodes.length; index++) {
+        const node = jobNodes[index];
         try {
           log(`\nProcessing job ${index + 1}/${jobNodes.length}:`)
 
@@ -1006,7 +1007,7 @@ const scrapers = {
             // 检查是否已经处理过这个职位
             if (seenJobIds.has(jobId)) {
               log('Skipping duplicate job')
-              return
+              continue
             }
             
             seenJobIds.add(jobId)
@@ -1024,6 +1025,37 @@ const scrapers = {
               jobUrl = 'https://indeed.com' + jobUrl
             }
 
+            let finalJobType = jobType;
+            // 如果 jobType 抓不到，進入詳情頁補抓
+            if (!finalJobType && jobUrl) {
+              try {
+                const response = await fetch(jobUrl)
+                const html = await response.text()
+                const parser = new DOMParser()
+                const doc = parser.parseFromString(html, 'text/html')
+
+                log('=== Full HTML Document ===')
+                log(doc.documentElement.outerHTML)
+                log('=== End of HTML Document ===')
+
+                // 根據 Indeed 詳情頁的 jobType 實際選擇器來抓
+                let detailJobTypeNode =
+                  doc.querySelector('div[data-testid="attribute_snippet_job_type"]') ||
+                  doc.querySelector('span[class*="js-match-insights-provider"]');
+                if (detailJobTypeNode) {
+                  // finalJobType = detailJobTypeNode.textContent.trim();
+                  // 再用 button+span 組合
+                  const fullTimeElements = doc.querySelectorAll('button[data-testid="Full-time-tile"] span.js-match-insights-provider-1vjtffa');
+                  if (fullTimeElements.length > 0) {
+                    finalJobType = fullTimeElements[0].textContent.trim();
+                  }
+                }
+                log(`Fetched jobType from detail page: ${finalJobType}`)
+              } catch (error) {
+                log('Error fetching jobType from detail page: ' + error)
+              }
+            }
+
             const job = Job.createFromIndeed({
               title: titleNode.textContent.trim(),
               company: companyNode.textContent.trim(),
@@ -1033,7 +1065,7 @@ const scrapers = {
               salary: salaryText || '',
               postedDate: postedDateNode?.textContent?.trim(),
               companyLogoUrl: node.querySelector('img.companyAvatar')?.src || null,
-              jobType: jobType
+              jobType: finalJobType
             })
 
             log(`Successfully scraped job: ${job.title} at ${job.company}`)
@@ -1049,7 +1081,7 @@ const scrapers = {
         } catch (error) {
           log(`Error processing job ${index + 1}: ${error.message}`)
         }
-      })
+      }
 
       // Get next page URL
       const nextPageLink = document.querySelector('a[data-testid="pagination-page-next"]')
