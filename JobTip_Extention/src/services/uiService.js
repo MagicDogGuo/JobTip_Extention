@@ -101,7 +101,12 @@ function createJobCard (job) {
   if (job.description) {
     description = document.createElement('p')
     description.className = 'job-description'
-    description.textContent = job.description
+    const maxLength = 100 // 你想要的最大長度
+    let descText = job.description
+    if (descText.length > maxLength) {
+      descText = descText.substring(0, maxLength) + '...'
+    }
+    description.textContent = descText
   }
 
   // Add posted date if available
