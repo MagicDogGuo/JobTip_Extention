@@ -50,7 +50,7 @@ class Job {
       sourceId: data.sourceId || '',
       sourceUrl: data.jobUrl,
       platform: 'LinkedIn',
-      createdAt: new Date(),
+      createdAt: data.createdAt || new Date(),
       updatedAt: new Date()
     })
   }
@@ -268,7 +268,82 @@ const scrapers = {
                       const parser = new DOMParser();
                       const doc = parser.parseFromString(response.html, 'text/html');
                       
-                      log("++++++doc: "+doc);
+                      // 尝试从HTML中提取JSON数据
+                      let createdAt = new Date();
+                      try {
+                        const html = doc.documentElement.outerHTML;
+                        // 查找包含时间信息的JSON数据
+                        const jsonMatches = html.match(/"text":"[^"]*(\d+)\s*(days?|weeks?|months?|hours?|minutes?)\s*ago[^"]*"/g);
+                        
+                        log(`======jsonMatches: ${jsonMatches}`);
+                        if (jsonMatches) {
+                          let earliestDate = new Date();
+                          let foundDate = false; // 添加标志，表示是否已找到日期
+                          
+                          for (const match of jsonMatches) {
+                            const timeMatch = match.match(/(\d+)\s*(days?|weeks?|months?|hours?|minutes?)\s*ago/);
+                            if (timeMatch) {
+                              log(`======timeMatch: ${timeMatch}`);
+                              const amount = parseInt(timeMatch[1]);
+                              const unit = timeMatch[2].toLowerCase();
+                              
+                              log(`======amount: ${amount}`);
+                              log(`======unit: ${unit}`);
+                              
+                              // 根据时间单位计算createdAt
+                              if (unit.startsWith('day')) {
+                                const now = new Date();
+                                const calculatedDate = new Date(now.getTime() - (amount * 24 * 60 * 60 * 1000));
+                                log(`======calculated date: ${calculatedDate.toISOString()}`);
+                                
+                                // 如果计算出的日期比当前最早的日期更早，则更新
+                                if (calculatedDate < earliestDate) {
+                                  earliestDate = calculatedDate;
+                                  log(`======New earliest date: ${earliestDate.toISOString()}`);
+                                }
+                                
+                                foundDate = true; // 标记已找到日期
+                                break; // 找到第一个日期后就停止
+                              } else if (unit.startsWith('week')) {
+                                const now = new Date();
+                                const calculatedDate = new Date(now.getTime() - (amount * 7 * 24 * 60 * 60 * 1000));
+                                log(`======calculated date (weeks): ${calculatedDate.toISOString()}`);
+                                
+                                // 如果计算出的日期比当前最早的日期更早，则更新
+                                if (calculatedDate < earliestDate) {
+                                  earliestDate = calculatedDate;
+                                  log(`======New earliest date: ${earliestDate.toISOString()}`);
+                                }
+                                
+                                foundDate = true; // 标记已找到日期
+                                break; // 找到第一个日期后就停止
+                              } else if (unit.startsWith('month')) {
+                                const now = new Date();
+                                // 使用30天作为一个月
+                                const calculatedDate = new Date(now.getTime() - (amount * 30 * 24 * 60 * 60 * 1000));
+                                log(`======calculated date (months): ${calculatedDate.toISOString()}`);
+                                
+                                // 如果计算出的日期比当前最早的日期更早，则更新
+                                if (calculatedDate < earliestDate) {
+                                  earliestDate = calculatedDate;
+                                  log(`======New earliest date: ${earliestDate.toISOString()}`);
+                                }
+                                
+                                foundDate = true; // 标记已找到日期
+                                break; // 找到第一个日期后就停止
+                              }
+                            }
+                          }
+                          
+                          // 只有在找到日期时才更新createdAt
+                          if (foundDate) {
+                            createdAt = earliestDate;
+                            log(`======Final createdAt (earliest): ${createdAt.toISOString()}`);
+                          }
+                        }
+                      } catch (error) {
+                        log(`Error extracting posted time from JSON: ${error.message}`);
+                      }
 
                       // 輸出完整的 HTML 文檔
                       log('=== Full HTML Document ===')
@@ -445,7 +520,8 @@ const scrapers = {
                       resolve({
                         salary: salary,
                         jobType: jobType,
-                        description: description
+                        description: description,
+                        createdAt: createdAt
                       });
                     } else {
                       log(`Error fetching job detail: ${response?.error || 'Unknown error'}`);
@@ -455,13 +531,15 @@ const scrapers = {
                 );
               });
 
-              // 更新薪資、工作類型和描述
+              // 更新薪資、工作類型、描述和创建时间
               salaryText = detailData.salary;
               jobType = detailData.jobType;
               description = detailData.description;
+              createdAt = detailData.createdAt;
               log(`Updated salary from detail page: ${salaryText}`);
               log(`Updated job type from detail page: ${jobType}`);
               log(`Updated description from detail page: ${description.substring(0, 100)}...`);
+              log(`Updated createdAt from detail page: ${createdAt.toISOString()}`);
 
             } catch (error) {
               log(`Error in job detail fetching: ${error.message}`);
@@ -505,7 +583,8 @@ const scrapers = {
               postedDate: postedDateNode?.textContent?.trim(),
               jobUrl: jobUrl,
               companyLogoUrl: logoNode?.src,
-              jobType: jobType || ''
+              jobType: jobType || '',
+              createdAt: createdAt
             })
             log('Successfully scraped LinkedIn job')
             jobs.push(job)

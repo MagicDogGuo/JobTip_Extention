@@ -224,7 +224,7 @@ const formatJobData = (jobs, userToken) => {
         deadline: null,
         notes: '',
         platform: job.platform,
-        createdAt: new Date().toISOString(),
+        createdAt: job.createdAt || new Date().toISOString(),
         updatedAt: new Date().toISOString()
       };
     })
