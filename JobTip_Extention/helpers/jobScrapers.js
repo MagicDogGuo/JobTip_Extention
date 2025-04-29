@@ -86,7 +86,7 @@ class Job {
       sourceId: data.sourceId || '',
       sourceUrl: data.jobUrl,
       platform: 'Indeed',
-      createdAt: new Date(),
+      createdAt: data.createdAt || new Date(),
       updatedAt: new Date()
     })
   }
@@ -507,11 +507,11 @@ const scrapers = {
                           .filter(text => text);
                         
                         const jobTypeText = metadataItems.find(text =>
-                          text.match(/\b(Full-time|Part-time|Contract|Temporary|Internship|Casual|Contractor)\b/i)
+                          text.match(/\b(Full-time|Part-time|Contract|Temporary|Internship|Casual|Contractor|Graduate)\b/i)
                         );
                         
                         if (jobTypeText) {
-                          jobType = jobTypeText.match(/\b(Full-time|Part-time|Contract|Temporary|Internship|Casual|Contractor)\b/i)[0];
+                          jobType = jobTypeText.match(/\b(Full-time|Part-time|Contract|Temporary|Internship|Casual|Contractor|Graduate)\b/i)[0];
                         }
                       }
 
@@ -1062,9 +1062,9 @@ const scrapers = {
 
           const salaryText = metadataItems.find(text => text.includes('$'))
           const jobTypeText = metadataItems.find(text =>
-            /\b(Full-time|Part-time|Contract|Temporary|Internship|Casual|Contractor)\b/i.test(text)
+            /\b(Full-time|Part-time|Contract|Temporary|Internship|Casual|Contractor|Graduate)\b/i.test(text)
           )
-          const jobType = jobTypeText?.match(/\b(Full-time|Part-time|Contract|Temporary|Internship|Casual|Contractor)\b/i)?.[0] || ''
+          const jobType = jobTypeText?.match(/\b(Full-time|Part-time|Contract|Temporary|Internship|Casual|Contractor|Graduate)\b/i)?.[0] || ''
 
           const description = descriptionNode?.textContent?.trim()
             .replace(/…$/, '')
@@ -1105,6 +1105,8 @@ const scrapers = {
             }
 
             let finalJobType = jobType;
+            let createdAt = new Date();
+
             // 如果 jobType 抓不到，進入詳情頁補抓
             if (!finalJobType && jobUrl) {
               try {
@@ -1117,17 +1119,47 @@ const scrapers = {
                 log(doc.documentElement.outerHTML)
                 log('=== End of HTML Document ===')
 
-                // 根據 Indeed 詳情頁的 jobType 實際選擇器來抓
-                let detailJobTypeNode =
-                  doc.querySelector('div[data-testid="attribute_snippet_job_type"]') ||
-                  doc.querySelector('span[class*="js-match-insights-provider"]');
-                if (detailJobTypeNode) {
-                  // finalJobType = detailJobTypeNode.textContent.trim();
-                  // 再用 button+span 組合
-                  const fullTimeElements = doc.querySelectorAll('button[data-testid="Full-time-tile"] span.js-match-insights-provider-1vjtffa');
-                  if (fullTimeElements.length > 0) {
-                    finalJobType = fullTimeElements[0].textContent.trim();
+                //尝试从HTML中提取createdAt
+                try {
+                  // 查找包含jobMetadataFooterModel的JSON数据
+                  const jsonMatch = doc.documentElement.outerHTML.match(/"jobMetadataFooterModel":\s*{[^}]*"age":\s*"([^"]+)"/);
+                  if (jsonMatch) {
+                    const ageText = jsonMatch[1];
+                    log(`======Found age text: ${ageText}`);
+                    
+                    // 解析时间文本
+                    const daysMatch = ageText.match(/(\d+)\s*days?/);
+                    const weeksMatch = ageText.match(/(\d+)\s*weeks?/);
+                    const monthsMatch = ageText.match(/(\d+)\s*months?/);
+                    
+                    if (daysMatch) {
+                      const days = parseInt(daysMatch[1]);
+                      createdAt = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+                      log(`======Calculated date from days: ${createdAt.toISOString()}`);
+                    } else if (weeksMatch) {
+                      const weeks = parseInt(weeksMatch[1]);
+                      createdAt = new Date(Date.now() - weeks * 7 * 24 * 60 * 60 * 1000);
+                      log(`======Calculated date from weeks: ${createdAt.toISOString()}`);
+                    } else if (monthsMatch) {
+                      const months = parseInt(monthsMatch[1]);
+                      createdAt = new Date(Date.now() - months * 30 * 24 * 60 * 60 * 1000);
+                      log(`======Calculated date from months: ${createdAt.toISOString()}`);
+                    }
                   }
+                } catch (error) {
+                  log(`Error extracting createdAt from Indeed HTML: ${error.message}`);
+                  // 如果提取createdAt失败，使用当前时间
+                  createdAt = new Date();
+                }
+
+                // 根據 Indeed 詳情頁的 jobType 實際選擇器來抓
+                const jobTypeEl = doc.querySelector('div[data-testid="attribute_snippet_job_type"]') ||
+                  Array.from(doc.querySelectorAll('span[class*="js-match-insights-provider"]'))
+                       .find(el => el.textContent?.match(/full-time|part-time|contract|temporary|intern|graduate/i));
+
+                if (jobTypeEl) {
+                  finalJobType = jobTypeEl.textContent.trim();
+                  log(`Found jobType element: ${finalJobType}`);
                 }
                 log(`Fetched jobType from detail page: ${finalJobType}`)
               } catch (error) {
@@ -1151,7 +1183,8 @@ const scrapers = {
               postedDate: postedDateNode?.textContent?.trim(),
               companyLogoUrl: node.querySelector('img.companyAvatar')?.src || null,
               jobType: finalJobType,
-              sourceId: sourceId
+              sourceId: sourceId,
+              createdAt: createdAt // 添加createdAt
             })
 
             log(`Successfully scraped job: ${job.title} at ${job.company}`)
