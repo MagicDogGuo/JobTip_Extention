@@ -68,7 +68,7 @@ class Job {
       sourceId: data.sourceId || '',
       sourceUrl: data.jobUrl,
       platform: 'SEEK',
-      createdAt: new Date(),
+      createdAt: data.createdAt || new Date(),
       updatedAt: new Date()
     })
   }
@@ -816,27 +816,33 @@ const scrapers = {
 
                       // 將發布日期文字轉換為具體日期
                       let createdAt = new Date()
-                      if (detailPostedDateNode) {
-                        const postedText = detailPostedDateNode.textContent.trim()
-                        log(`Found posted date text: ${postedText}`)
-                        
-                        // 解析日期文字，例如 "Posted 27d ago"
-                        const daysMatch = postedText.match(/Posted (\d+)d ago/)
-                        const hoursMatch = postedText.match(/Posted (\d+)h ago/)
-                        const minutesMatch = postedText.match(/Posted (\d+)m ago/)
-                        
-                        if (daysMatch) {
-                          const days = parseInt(daysMatch[1])
-                          createdAt = new Date(Date.now() - days * 24 * 60 * 60 * 1000)
-                        } else if (hoursMatch) {
-                          const hours = parseInt(hoursMatch[1])
-                          createdAt = new Date(Date.now() - hours * 60 * 60 * 1000)
-                        } else if (minutesMatch) {
-                          const minutes = parseInt(minutesMatch[1])
-                          createdAt = new Date(Date.now() - minutes * 60 * 1000)
+                      try {
+                        const html = doc.documentElement.outerHTML
+                        // 查找包含 postedTime 的 JSON 数据
+                        const postedTimeMatch = html.match(/"postedTime":"(\d+)([dhm]) ago"/)
+                        if (postedTimeMatch) {
+                          const amount = parseInt(postedTimeMatch[1])
+                          const unit = postedTimeMatch[2]
+                          
+                          if (unit === 'd') {
+                            createdAt = new Date(Date.now() - amount * 24 * 60 * 60 * 1000)
+                          } else if (unit === 'h') {
+                            createdAt = new Date(Date.now() - amount * 60 * 60 * 1000)
+                          } else if (unit === 'm') {
+                            createdAt = new Date(Date.now() - amount * 60 * 1000)
+                          }
+                          
+                          log(`Found posted time: ${amount}${unit} ago`)
+                          log(`Converted date: ${createdAt.toISOString()}`)
                         }
-                        
-                        log(`Converted date: ${createdAt.toISOString()}`)
+                      } catch (error) {
+                        log(`Error extracting posted time: ${error.message}`)
+                      }
+
+                      // 如果没有抓到时间，使用当天的时间（去掉时分秒）
+                      if (!createdAt) {
+                        createdAt = new Date()
+                        log(`Using start of today as createdAt: ${createdAt.toISOString()}`)
                       }
                       
                       resolve({
