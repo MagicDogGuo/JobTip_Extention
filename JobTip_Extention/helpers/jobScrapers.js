@@ -711,6 +711,8 @@ const scrapers = {
             'a[href*="-jobs/part-time"]',
             'a[href*="-jobs/casual"]',
             'a[href*="-jobs/contract"]',
+            'a[href*="-jobs/internship"]',
+            'a[href*="-jobs/graduate"]',
             'span[data-automation="jobType"]',
             'span[class*="job-type"]',
             'div[class*="job-type"]'
@@ -754,6 +756,8 @@ const scrapers = {
                         'a[href*="-jobs/part-time"]',
                         'a[href*="-jobs/casual"]',
                         'a[href*="-jobs/contract"]',
+                        'a[href*="-jobs/internship"]',
+                        'a[href*="-jobs/graduate"]',
                         'span[data-automation="jobType"]',
                         'span[class*="job-type"]',
                         'div[class*="job-type"]',
@@ -858,6 +862,7 @@ const scrapers = {
                 )
               })
 
+              
               // 更新 jobType、salary 和 createdAt
               if (!jobType) {
                 jobType = detailData.jobType
@@ -876,6 +881,26 @@ const scrapers = {
             } catch (error) {
               log(`Error in job detail fetching: ${error.message}`)
             }
+          }
+
+          // 格式化 jobType
+          log(`============================jobType: ${jobType}`)
+          // 格式化 jobType
+          if (jobType) {
+            // 将 "full time" 转换为 "Full-time"
+            jobType = jobType.replace(/full\s*time/i, 'Full-time')
+            // 将 "part time" 转换为 "Part-time"
+            jobType = jobType.replace(/part\s*time/i, 'Part-time')
+            // 将 "casual" 转换为 "Casual"
+            jobType = jobType.replace(/casual/i, 'Casual')
+            // 将 "contract" 转换为 "Contract"
+            jobType = jobType.replace(/contract/i, 'Contract')
+            // 将 "internship" 转换为 "Internship"
+            jobType = jobType.replace(/internship/i, 'Internship')
+            // 将 "graduate" 转换为 "Graduate"
+            jobType = jobType.replace(/graduate/i, 'Graduate')
+            // 将 "Contract/Temp" 转换为 "Contract"
+            jobType = jobType.replace(/contract\/temp/i, 'Contract')
           }
 
           log(`Title found: ${!!titleNode}`)
