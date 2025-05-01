@@ -1,3 +1,5 @@
+const enableLogFileDownload = false; // 设置为 true 以启用日志文件下载
+
 class Job {
   constructor({
     title,
@@ -597,16 +599,18 @@ const scrapers = {
         }
       }
 
-      // Save logs to a file
-      const blob = new Blob([logMessages.join('\n')], { type: 'text/plain' })
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = 'linkedin_scraper_logs.txt'
-      document.body.appendChild(a)
-      a.click()
-      document.body.removeChild(a)
-      URL.revokeObjectURL(url)
+      // Save logs to a file (conditionally)
+      if (enableLogFileDownload) {
+        const blob = new Blob([logMessages.join('\n')], { type: 'text/plain' })
+        const url = URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = 'linkedin_scraper_logs.txt'
+        document.body.appendChild(a)
+        a.click()
+        document.body.removeChild(a)
+        URL.revokeObjectURL(url)
+      }
 
       log(`=== LinkedIn Scraping Complete: ${jobs.length} jobs found ===`)
       return { jobs, nextUrl }
@@ -950,16 +954,18 @@ const scrapers = {
 
       log(`Next URL: ${nextUrl || 'No next page available'}`)
 
-      // Save logs to a file
-      const blob = new Blob([seekLogs.join('\n')], { type: 'text/plain' })
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = 'seek_scraper_logs.txt'
-      document.body.appendChild(a)
-      a.click()
-      document.body.removeChild(a)
-      URL.revokeObjectURL(url)
+      // Save logs to a file (conditionally)
+      if (enableLogFileDownload) {
+        const blob = new Blob([seekLogs.join('\n')], { type: 'text/plain' })
+        const url = URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = 'seek_scraper_logs.txt'
+        document.body.appendChild(a)
+        a.click()
+        document.body.removeChild(a)
+        URL.revokeObjectURL(url)
+      }
 
       log(`=== SEEK Scraping Complete: ${jobs.length} jobs found ===`)
       return { jobs, nextUrl }
@@ -1240,16 +1246,18 @@ const scrapers = {
       log(`Scraped ${jobs.length} jobs from current page`)
       log(`Next page URL: ${nextUrl || 'No next page available'}`)
 
-      // Save logs to a file
-      const blob = new Blob([logMessages.join('\n')], { type: 'text/plain' })
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = 'indeed_scraper_logs.txt'
-      document.body.appendChild(a)
-      a.click()
-      document.body.removeChild(a)
-      URL.revokeObjectURL(url)
+      // Save logs to a file (conditionally)
+      if (enableLogFileDownload) {
+        const blob = new Blob([logMessages.join('\n')], { type: 'text/plain' })
+        const url = URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = 'indeed_scraper_logs.txt'
+        document.body.appendChild(a)
+        a.click()
+        document.body.removeChild(a)
+        URL.revokeObjectURL(url)
+      }
 
       log(`=== Indeed Scraping Complete: ${jobs.length} jobs found ===`)
       return { jobs, nextUrl }
@@ -1298,29 +1306,3 @@ function log(message) {
   indeedLogs.push(message);
 }
 
-// 修改 Indeed 爬蟲函數
-async function scrapeIndeedJobs() {
-  indeedLogs = []; // 清空日誌
-  log('=== Indeed Scraping Started ===');
-  
-  try {
-    // ... existing scraping code ...
-
-    // 在爬蟲結束時保存日誌
-    const blob = new Blob([indeedLogs.join('\n')], { type: 'text/plain' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'indeed_scraper_logs.txt';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-
-    log('=== Indeed Scraping Complete ===');
-    return jobs;
-  } catch (error) {
-    log(`Error during Indeed scraping: ${error.message}`);
-    throw error;
-  }
-} 
