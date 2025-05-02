@@ -9,7 +9,7 @@ class Job {
     requirements = [],
     salary = '',
     jobType = '',
-    status = '未申請',
+    status = 'unapplied',
     source = '',
     sourceId = '',
     sourceUrl = '',
@@ -27,7 +27,7 @@ class Job {
     this.requirements = Array.isArray(requirements) ? requirements : []
     this.salary = salary?.trim() || ''
     this.jobType = jobType?.trim() || ''
-    this.status = status?.trim() || '未申請'
+    this.status = status?.trim() || 'unapplied'
     this.source = source?.trim() || ''
     this.sourceId = sourceId?.trim() || ''
     this.sourceUrl = sourceUrl || ''
@@ -1097,7 +1097,11 @@ const scrapers = {
             })
             .filter(text => text)
 
-          const salaryText = metadataItems.find(text => text.includes('$'))
+          log('=======================metadataItems 所有内容:')
+          log(JSON.stringify(metadataItems, null, 2))
+          log('=======================metadataItems 结束')
+
+          let salaryText = metadataItems.find(text => text.includes('$')) //$ ||'$'||'$'
           const jobTypeText = metadataItems.find(text =>
             /\b(Full-time|Part-time|Contract|Temporary|Internship|Casual|Contractor|Graduate)\b/i.test(text)
           )
@@ -1156,6 +1160,21 @@ const scrapers = {
                 log(doc.documentElement.outerHTML)
                 log('=== End of HTML Document ===')
 
+                // 尝试从HTML中提取薪资信息
+                try {
+                  const salaryMatch = doc.documentElement.outerHTML.match(/class="js-match-insights-provider-[^"]*">([^<]*\$[^<]+)<\/span>/);
+                  if (salaryMatch && salaryMatch[1]) {
+                    const detailSalary = salaryMatch[1].trim();
+                    log(`Found salary in detail page: ${detailSalary}`);
+                    if (!salaryText) {
+                      salaryText = detailSalary;
+                      // return; // 找到第一个薪资信息后立即返回
+                    }
+                  }
+                } catch (error) {
+                  log(`Error extracting salary from Indeed HTML: ${error.message}`);
+                }
+
                 //尝试从HTML中提取createdAt
                 try {
                   // 查找包含jobMetadataFooterModel的JSON数据
@@ -1188,6 +1207,7 @@ const scrapers = {
                   // 如果提取createdAt失败，使用当前时间
                   createdAt = new Date();
                 }
+
 
                 // 根據 Indeed 詳情頁的 jobType 實際選擇器來抓
                 const jobTypeEl = doc.querySelector('div[data-testid="attribute_snippet_job_type"]') ||
