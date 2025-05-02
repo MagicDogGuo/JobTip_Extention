@@ -169,7 +169,7 @@ const JOB_DATA_STRUCTURE = {
     requirements: [],
     salary: '',
     jobType: '',
-    status: '未申請',
+    status: 'unapplied',
     source: '',
     sourceId: '',
     sourceUrl: '',
@@ -216,7 +216,7 @@ const formatJobData = (jobs, userToken) => {
         requirements: job.requirements || [],
         salary: job.salary || '',
         jobType: job.jobType || '',
-        status: '未申請',
+        status: 'unapplied',
         source: job.platform,
         sourceId: sourceId,
         sourceUrl: sourceUrl,
@@ -247,19 +247,19 @@ const apiTester = {
       if (response.ok) {
         const data = await response.json()
         console.log('GET response:', data)
-        uiService.showMessage(statusMessage, `成功获取Get`, 'success')
+        uiService.showMessage(statusMessage, `Successfully retrieved`, 'success')
 
         // uiService.showMessage(statusMessage, `成功获取 ${data.length} 个工作数据`, 'success')
       } else {
         const errorData = await response.json()
-        uiService.showMessage(statusMessage, `获取失败Get`, 'error')
+        uiService.showMessage(statusMessage, `Retrieval failed`, 'error')
 
         // uiService.showMessage(statusMessage, `获取失败: ${errorData.message || '未知错误'}`, 'error')
       }
     } catch (error) {
       console.error('API test error:', error)
       const statusMessage = document.getElementById('statusMessage')
-      uiService.showMessage(statusMessage, `获取失败: ${error.message}`, 'error')
+      uiService.showMessage(statusMessage, `Retrieval failed: ${error.message}`, 'error')
     }
   }
 }
@@ -273,7 +273,7 @@ const apiExporter = {
       if (scrapedJobs.length > 0) {
         const userToken = await storageService.getUserToken();
         if (!userToken) {
-          uiService.showMessage(statusMessage, '請先登入Jobtip獲取userToke，或保持在Jobtip網頁再導出', 'error');
+          uiService.showMessage(statusMessage, 'Please log in to Jobtip first to get userToken, or keep the Jobtip page open', 'error');
           const tab = await tabService.ensureJobtipWebsite(false);
           return;
         }
@@ -292,20 +292,20 @@ const apiExporter = {
         
         if (apiResponse.ok) {
           const data = await apiResponse.json();
-          console.log('导出成功:', data);
-          uiService.showMessage(statusMessage, `成功導出${data.data.length} 個工作到後端，包含 user token`, 'success');
+          console.log('Export successful:', data);
+          uiService.showMessage(statusMessage, `Successfully exported ${data.data.length} jobs to backend with user token`, 'success');
         } else {
           const errorData = await apiResponse.json();
           console.error('API export error:', errorData.message);
-          uiService.showMessage(statusMessage, `导出失败: ${errorData.message || '未知错误'}`, 'error');
+          uiService.showMessage(statusMessage, `Export failed: ${errorData.message || 'Unknown error'}`, 'error');
         }
       } else {
-        uiService.showMessage(statusMessage, '没有找到可导出的工作', 'error');
+        uiService.showMessage(statusMessage, 'No jobs found to export', 'error');
       }
     } catch (error) {
       console.error('API export error:', error.message);
       const statusMessage = document.getElementById('statusMessage');
-      uiService.showMessage(statusMessage, `导出失败: ${error.message}`, 'error');
+      uiService.showMessage(statusMessage, `Export failed: ${error.message}`, 'error');
     }
   }
 };
@@ -354,7 +354,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   maxJobsContainer.style.marginTop = '8px'
   maxJobsContainer.innerHTML = `
     <div style="display: flex; align-items: center; gap: 10px;">
-      <label for="maxJobs" style="white-space: nowrap;">最大爬取數量:</label>
+      <label for="maxJobs" style="white-space: nowrap;">Maximum job limit:</label>
       <input type="number" id="maxJobs" min="1" max="100" value="3" style="flex: 1; padding: 8px;">
     </div>
   `
@@ -414,13 +414,13 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     try {
       if (scrapedJobs.length === 0) {
-        uiService.showMessage(statusMessage, '沒有可導出的工作結果', true)
+        uiService.showMessage(statusMessage, 'No jobs to export', true)
         return
       }
 
       const userToken = await storageService.getUserToken();
       if (!userToken) {
-        uiService.showMessage(statusMessage, '請先登入Jobtip獲取userToken後，或保持在Jobtip網頁再導出', 'error');
+        uiService.showMessage(statusMessage, 'Please log in to Jobtip first to get userToken, or keep the Jobtip page open', 'error');
         const tab = await tabService.ensureJobtipWebsite(false);
         return;
       }
@@ -439,10 +439,10 @@ document.addEventListener('DOMContentLoaded', async () => {
       document.body.removeChild(a)
       URL.revokeObjectURL(url)
       
-      uiService.showMessage(statusMessage, '工作結果導出成功，包含 user token');
+      uiService.showMessage(statusMessage, 'Job results exported successfully with user token');
     } catch (error) {
       console.error('Error exporting job results:', error)
-      uiService.showMessage(statusMessage, '導出結果時發生錯誤', true)
+      uiService.showMessage(statusMessage, 'Error occurred while exporting results', true)
     }
   })
 
@@ -546,40 +546,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         throw new Error('Could not find main browser window')
       }
 
-      // 模拟获取到了工作数据
-      // console.log('模拟爬取工作数据')
-      // await new Promise(resolve => setTimeout(resolve, 2000))  // 模拟网络延迟
-      
-      // scrapedJobs = [
-      //   {
-      //     id: 'simulated-1',
-      //     title: '模拟工作1',
-      //     company: '模拟公司',
-      //     location: location,
-      //     url: 'https://example.com/job1',
-      //     platform: 'LinkedIn',
-      //     description: '这是一个模拟的工作描述。版本检查被跳过，所以网站选项现在应该正常显示。'
-      //   },
-      //   {
-      //     id: 'simulated-2',
-      //     title: '模拟工作2',
-      //     company: '模拟公司',
-      //     location: location,
-      //     url: 'https://example.com/job2',
-      //     platform: 'Indeed',
-      //     description: '这是另一个模拟的工作描述。'
-      //   }
-      // ]
-      
-      // // 显示模拟的工作数据
-      // displayJobs(scrapedJobs)
-      // uiService.showMessage(statusMessage, `模拟爬取了 ${scrapedJobs.length} 个工作!`)
-
-
       for (const site of sites) {
         // 检查是否已经达到最大工作数量
         if (scrapedJobs.length >= maxJobs) {
-          console.log(`已达到最大爬取数量限制 (${maxJobs})，停止爬取其他网站`)
+          console.log(`Reached maximum job limit (${maxJobs}), stopping further scraping`)
+          chrome.tabs.remove(tab.id).catch(err => console.error('Failed to close tab:', err))
           break
         }
 
@@ -658,12 +629,12 @@ document.addEventListener('DOMContentLoaded', async () => {
           scrapedJobs.forEach(job => {
             jobList.appendChild(uiService.createJobCard(job))
           })
+          chrome.tabs.remove(tab.id).catch(err => console.error('Failed to close tab:', err))
 
           // 检查是否已达到最大工作数量
           if (scrapedJobs.length >= maxJobs) {
-            console.log(`已达到最大爬取数量 (${maxJobs})，停止爬取更多页面`)
-            // 关闭当前标签页
-            chrome.tabs.remove(tab.id).catch(err => console.error('关闭标签页失败:', err))
+            console.log(`Reached maximum job limit (${maxJobs}), stopping further scraping`)
+            chrome.tabs.remove(tab.id).catch(err => console.error('Failed to close tab:', err))
             break
           }
         } catch (error) {
@@ -790,15 +761,15 @@ document.addEventListener('DOMContentLoaded', async () => {
         const userToken = await storageService.getUserToken() || '';
         
         if (userToken) {
-          uiService.showMessage(statusMessage, `成功獲取 user token: ${userToken}`, 'success');
+          uiService.showMessage(statusMessage, `Successfully retrieved user token: ${userToken}`, 'success');
           console.log('User token:', userToken);
         } else {
-          uiService.showMessage(statusMessage, '未找到 user token，請確保您已登入jobtip', 'error');
+          uiService.showMessage(statusMessage, 'User token not found, please ensure you are logged in to Jobtip', 'error');
         }
       } catch (error) {
-        console.error('獲取 user token 時發生錯誤:', error);
+        console.error('Error retrieving user token:', error);
         const statusMessage = document.getElementById('statusMessage');
-        uiService.showMessage(statusMessage, `獲取 user token 失敗: ${error.message}`, 'error');
+        uiService.showMessage(statusMessage, `Failed to retrieve user token: ${error.message}`, 'error');
       }
     });
   }

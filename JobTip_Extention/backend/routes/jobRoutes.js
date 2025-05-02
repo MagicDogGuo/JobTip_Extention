@@ -71,7 +71,7 @@ router.post('/', async (req, res) => {
           jobType: job.jobType || '',
           platform: job.platform || 'LinkedIn',
           requirements: job.requirements || [],
-          status: job.status || '未申請',
+          status: job.status || 'unapplied',
           source: job.source || '',
           sourceId: job.sourceId || '',
           sourceUrl: job.sourceUrl || '',
