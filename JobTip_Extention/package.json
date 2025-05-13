@@ -1,0 +1,54 @@
+{
+  "name": "jobtrip-extension",
+  "version": "1.0.1",
+  "description": "JobTrip浏览器扩展 - 自动收集多平台职位信息并集中管理",
+  "main": "background.js",
+  "scripts": {
+    "build": "mkdir -p dist && cp -r *.js *.html *.css manifest.json icons/ helpers/ src/ dist/",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "version:patch": "npm version patch && node scripts/update-manifest-version.js",
+    "version:minor": "npm version minor && node scripts/update-manifest-version.js",
+    "version:major": "npm version major && node scripts/update-manifest-version.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/DravenTJU/Job-Trip.git"
+  },
+  "keywords": [
+    "chrome-extension",
+    "job-search",
+    "job-tracking",
+    "jobtrip"
+  ],
+  "author": "JobTrip Team",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/DravenTJU/Job-Trip/issues"
+  },
+  "homepage": "https://github.com/DravenTJU/Job-Trip/tree/main/JobTrip_Extention#readme",
+  "devDependencies": {
+    "@babel/core": "^7.24.0",
+    "@babel/plugin-transform-modules-commonjs": "^7.24.0",
+    "@babel/preset-env": "^7.24.0",
+    "@jest/globals": "^29.7.0",
+    "babel-jest": "^29.7.0",
+    "jest": "^29.7.0",
+    "jest-environment-jsdom": "^29.7.0",
+    "semver": "^7.5.4"
+  },
+  "babel": {
+    "presets": [
+      ["@babel/preset-env", {
+        "targets": {
+          "node": "current"
+        }
+      }]
+    ],
+    "env": {
+      "test": {
+        "plugins": ["@babel/plugin-transform-modules-commonjs"]
+      }
+    }
+  }
+} 
